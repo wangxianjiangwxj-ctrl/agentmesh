@@ -10,29 +10,31 @@
       
       
       
-        <link rel="canonical" href="https://wangxianjiangwxj-ctrl.github.io/agentmesh/">
+        <link rel="canonical" href="https://wangxianjiangwxj-ctrl.github.io/agentmesh/examples/01-two-agent-research/">
       
       
+        <link rel="prev" href="../../api/adapter/">
       
-        <link rel="next" href="architecture/">
+      
+        <link rel="next" href="../02-three-agent-review/">
       
       
         
       
       
-      <link rel="icon" href="assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>AgentMesh</title>
+        <title>两Agent研究协作 - AgentMesh</title>
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -51,7 +53,7 @@
       
     
     
-    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -74,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#agentmesh" class="md-skip">
+        <a href="#agent" class="md-skip">
           Skip to content
         </a>
       
@@ -90,7 +92,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="." title="AgentMesh" class="md-header__button md-logo" aria-label="AgentMesh" data-md-component="logo">
+    <a href="../.." title="AgentMesh" class="md-header__button md-logo" aria-label="AgentMesh" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -110,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              首页
+              两Agent研究协作
             
           </span>
         </div>
@@ -202,7 +204,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="." title="AgentMesh" class="md-nav__button md-logo" aria-label="AgentMesh" data-md-component="logo">
+    <a href="../.." title="AgentMesh" class="md-nav__button md-logo" aria-label="AgentMesh" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -229,37 +231,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    首页
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="." class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -275,92 +250,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        核心数据
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        定位
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        快速安装
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5分钟上手
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        核心能力
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_5" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        实验验证
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -372,7 +261,7 @@
   
   
     <li class="md-nav__item">
-      <a href="architecture/" class="md-nav__link">
+      <a href="../../architecture/" class="md-nav__link">
         
   
   
@@ -399,7 +288,7 @@
   
   
     <li class="md-nav__item">
-      <a href="quickstart/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
@@ -473,7 +362,7 @@
   
   
     <li class="md-nav__item">
-      <a href="api/sdk/" class="md-nav__link">
+      <a href="../../api/sdk/" class="md-nav__link">
         
   
   
@@ -501,7 +390,7 @@
   
   
     <li class="md-nav__item">
-      <a href="api/adapter/" class="md-nav__link">
+      <a href="../../api/adapter/" class="md-nav__link">
         
   
   
@@ -533,18 +422,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
           <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
@@ -565,7 +456,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -580,10 +471,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="examples/01-two-agent-research/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    两Agent研究协作
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -599,6 +517,70 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        场景
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        代码
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        输出
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键观察
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -611,7 +593,7 @@
   
   
     <li class="md-nav__item">
-      <a href="examples/02-three-agent-review/" class="md-nav__link">
+      <a href="../02-three-agent-review/" class="md-nav__link">
         
   
   
@@ -639,7 +621,7 @@
   
   
     <li class="md-nav__item">
-      <a href="examples/03-cross-a2a-collaboration/" class="md-nav__link">
+      <a href="../03-cross-a2a-collaboration/" class="md-nav__link">
         
   
   
@@ -674,7 +656,7 @@
   
   
     <li class="md-nav__item">
-      <a href="cli/" class="md-nav__link">
+      <a href="../../cli/" class="md-nav__link">
         
   
   
@@ -701,7 +683,7 @@
   
   
     <li class="md-nav__item">
-      <a href="roadmap/" class="md-nav__link">
+      <a href="../../roadmap/" class="md-nav__link">
         
   
   
@@ -751,7 +733,7 @@
   <a href="#_1" class="md-nav__link">
     <span class="md-ellipsis">
       
-        核心数据
+        场景
       
     </span>
   </a>
@@ -762,7 +744,7 @@
   <a href="#_2" class="md-nav__link">
     <span class="md-ellipsis">
       
-        定位
+        代码
       
     </span>
   </a>
@@ -773,18 +755,7 @@
   <a href="#_3" class="md-nav__link">
     <span class="md-ellipsis">
       
-        快速安装
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5分钟上手
+        输出
       
     </span>
   </a>
@@ -795,18 +766,7 @@
   <a href="#_4" class="md-nav__link">
     <span class="md-ellipsis">
       
-        核心能力
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_5" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        实验验证
+        关键观察
       
     </span>
   </a>
@@ -833,111 +793,86 @@
   
 
 
-<h1 id="agentmesh">AgentMesh<a class="headerlink" href="#agentmesh" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p>让Agent协作不再丢信息、贡献可量化</p>
-</blockquote>
+<h1 id="agent">两Agent研究协作<a class="headerlink" href="#agent" title="Permanent link">&para;</a></h1>
+<p>A检索信息 → B整合报告，完整演示保真度追踪和贡献度分配。</p>
 <hr />
-<h2 id="_1">核心数据<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>指标</th>
-<th>值</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>实验轮次</td>
-<td>9轮</td>
-</tr>
-<tr>
-<td>测试用例</td>
-<td>53个全部通过</td>
-</tr>
-<tr>
-<td>问题类型</td>
-<td>4类</td>
-</tr>
-<tr>
-<td>应对机制</td>
-<td>4种</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="_2">定位<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
-<p>A2A让Agent能说话，AgentMesh让Agent协作<strong>不再丢信息、贡献可量化</strong>。</p>
-<p>AgentMesh 是一个跨主体 Agent 协作协议与工具集。它在 A2A 通信层之上，提供保真度追踪、贡献度量化和消息 Schema 合规能力。没有 AgentMesh，Agent 之间的信息传递衰减是不可见的；有了 AgentMesh，每一步的衰减都清晰可追踪。</p>
-<hr />
-<h2 id="_3">快速安装<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>git+https://github.com/wangxianjiangwxj-ctrl/agentmesh.git
-</code></pre></div>
-<h2 id="5">5分钟上手<a class="headerlink" href="#5" title="Permanent link">&para;</a></h2>
+<h2 id="_1">场景<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<p>两个Agent协作完成一份AI Agent安全研究的调研：</p>
+<ul>
+<li><strong>scout-alpha</strong>: 研究检索Agent，负责信息收集</li>
+<li><strong>forge-beta</strong>: 整合Agent，负责报告生成</li>
+</ul>
+<h2 id="_2">代码<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agentmesh_sdk</span><span class="w"> </span><span class="kn">import</span> <span class="n">CollaborationFlow</span>
 
+<span class="c1"># 创建协作流</span>
 <span class="n">flow</span> <span class="o">=</span> <span class="n">CollaborationFlow</span><span class="p">(</span><span class="s2">&quot;AI Agent安全调研&quot;</span><span class="p">,</span> <span class="n">use_signing</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="c1"># 注册Agent</span>
 <span class="n">flow</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="s2">&quot;scout-alpha&quot;</span><span class="p">)</span>
 <span class="n">flow</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="s2">&quot;forge-beta&quot;</span><span class="p">)</span>
 
-<span class="n">flow</span><span class="o">.</span><span class="n">step_retrieval</span><span class="p">(</span><span class="s2">&quot;scout-alpha&quot;</span><span class="p">,</span> <span class="s2">&quot;forge-beta&quot;</span><span class="p">,</span>
-    <span class="n">summary</span><span class="o">=</span><span class="s2">&quot;检索到5条AI Agent安全相关研究&quot;</span><span class="p">,</span>
-    <span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;sources&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">},</span> <span class="n">confidence</span><span class="o">=</span><span class="mf">0.85</span><span class="p">,</span> <span class="n">fidelity</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+<span class="c1"># Step 1: scout-alpha 检索信息 → forge-beta</span>
+<span class="n">flow</span><span class="o">.</span><span class="n">step_retrieval</span><span class="p">(</span>
+    <span class="n">from_agent</span><span class="o">=</span><span class="s2">&quot;scout-alpha&quot;</span><span class="p">,</span>
+    <span class="n">to_agent</span><span class="o">=</span><span class="s2">&quot;forge-beta&quot;</span><span class="p">,</span>
+    <span class="n">summary</span><span class="o">=</span><span class="s2">&quot;检索到5条AI Agent安全相关研究，涵盖2024-2025年主流方向&quot;</span><span class="p">,</span>
+    <span class="n">data</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;sources&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+        <span class="s2">&quot;coverage&quot;</span><span class="p">:</span> <span class="s2">&quot;2024-2025&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;topics&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;prompt injection&quot;</span><span class="p">,</span> <span class="s2">&quot;sandbox escape&quot;</span><span class="p">,</span> <span class="s2">&quot;data leakage&quot;</span><span class="p">],</span>
+    <span class="p">},</span>
+    <span class="n">confidence</span><span class="o">=</span><span class="mf">0.85</span><span class="p">,</span>
+    <span class="n">fidelity</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>
+<span class="p">)</span>
 
-<span class="n">flow</span><span class="o">.</span><span class="n">step_integration</span><span class="p">(</span><span class="s2">&quot;forge-beta&quot;</span><span class="p">,</span> <span class="s2">&quot;coordinator&quot;</span><span class="p">,</span>
-    <span class="n">summary</span><span class="o">=</span><span class="s2">&quot;5条信息源整合综述&quot;</span><span class="p">,</span>
-    <span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;key_findings&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">},</span> <span class="n">confidence</span><span class="o">=</span><span class="mf">0.78</span><span class="p">,</span> <span class="n">fidelity</span><span class="o">=</span><span class="mf">0.65</span><span class="p">)</span>
+<span class="c1"># Step 2: forge-beta 整合报告 → coordinator</span>
+<span class="n">flow</span><span class="o">.</span><span class="n">step_integration</span><span class="p">(</span>
+    <span class="n">from_agent</span><span class="o">=</span><span class="s2">&quot;forge-beta&quot;</span><span class="p">,</span>
+    <span class="n">to_agent</span><span class="o">=</span><span class="s2">&quot;coordinator&quot;</span><span class="p">,</span>
+    <span class="n">summary</span><span class="o">=</span><span class="s2">&quot;整合5条信息源，输出AI Agent安全研究方向综述&quot;</span><span class="p">,</span>
+    <span class="n">data</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;key_findings&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+        <span class="s2">&quot;gaps&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+        <span class="s2">&quot;recommendations&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="n">confidence</span><span class="o">=</span><span class="mf">0.78</span><span class="p">,</span>
+    <span class="n">fidelity</span><span class="o">=</span><span class="mf">0.65</span><span class="p">,</span>
+<span class="p">)</span>
 
+<span class="c1"># 获取完整报告</span>
 <span class="n">report</span> <span class="o">=</span> <span class="n">flow</span><span class="o">.</span><span class="n">full_report</span><span class="p">()</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=== AgentMesh 研究协作报告 ===&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">冲突率: </span><span class="si">{</span><span class="n">report</span><span class="p">[</span><span class="s1">&#39;validation&#39;</span><span class="p">][</span><span class="s1">&#39;conflict_rate&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;累积保真度: </span><span class="si">{</span><span class="n">flow</span><span class="o">.</span><span class="n">fidelity_tracker</span><span class="o">.</span><span class="n">cumulative_fidelity</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;贡献度: </span><span class="si">{</span><span class="n">report</span><span class="p">[</span><span class="s1">&#39;allocation&#39;</span><span class="p">][</span><span class="s1">&#39;shares&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;保真度警告: </span><span class="si">{</span><span class="n">report</span><span class="p">[</span><span class="s1">&#39;fidelity&#39;</span><span class="p">][</span><span class="s1">&#39;warning&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">贡献度分配:&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">agent</span><span class="p">,</span> <span class="n">share</span> <span class="ow">in</span> <span class="n">report</span><span class="p">[</span><span class="s1">&#39;allocation&#39;</span><span class="p">][</span><span class="s1">&#39;shares&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  - </span><span class="si">{</span><span class="n">agent</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">share</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">消息数: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">report</span><span class="p">[</span><span class="s1">&#39;messages&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">msg</span> <span class="ow">in</span> <span class="n">report</span><span class="p">[</span><span class="s1">&#39;messages&#39;</span><span class="p">]:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  [</span><span class="si">{</span><span class="n">msg</span><span class="p">[</span><span class="s1">&#39;message_type&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">msg</span><span class="p">[</span><span class="s1">&#39;sender&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">msg</span><span class="p">[</span><span class="s1">&#39;recipient&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
-<blockquote>
-<p><a href="quickstart/">5分钟快速上手</a> | <a href="architecture/">架构文档</a> | <a href="examples/">完整示例</a></p>
-</blockquote>
-<hr />
-<h2 id="_4">核心能力<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>能力</th>
-<th>说明</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>L1 Schema</td>
-<td>5个必填字段，强制Agent说该说的话</td>
-</tr>
-<tr>
-<td>保真度追踪</td>
-<td>自动计算累积衰减，低于阈值触发警告</td>
-</tr>
-<tr>
-<td>贡献度分配</td>
-<td>基于Shapley值近似，量化每个Agent贡献</td>
-</tr>
-<tr>
-<td>A2A适配</td>
-<td>与A2A协议双向互操作</td>
-</tr>
-<tr>
-<td>CLI工具</td>
-<td>init/validate/convert/fidelity/run</td>
-</tr>
-</tbody>
-</table>
-<h2 id="_5">实验验证<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
-<p>9轮实验逐步验证了AgentMesh的效果：</p>
-<ul>
-<li><strong>信息损失存在</strong>：exp-001/002 证实，2步传递后保真度仅0.585</li>
-<li><strong>Schema有效</strong>：exp-003/005 证实，冲突率从100%降到0%</li>
-<li><strong>审查Agent有效</strong>：exp-008 证实，推理错误检测率100%</li>
-<li><strong>恢复机制有效</strong>：exp-009 证实，4步比3步更鲁棒</li>
-</ul>
-<blockquote>
-<p>查看<a href="roadmap/">完整路线图</a>了解每个阶段的详细进展</p>
-</blockquote>
+<h2 id="_3">输出<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>=== AgentMesh 研究协作报告 ===
+
+冲突率: 0.0%
+累积保真度: 0.585
+保真度警告: False
+
+贡献度分配:
+  - scout-alpha: 0.5095
+  - forge-beta: 0.4905
+
+消息数: 2
+  [TaskRequest] scout-alpha -&gt; forge-beta
+  [TaskResult] forge-beta -&gt; coordinator
+</code></pre></div>
+<h2 id="_4">关键观察<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
+<p><strong>保真度衰减</strong>：scout-alpha 传递了 0.9 保真度的信息，forge-beta 处理后降至 0.65，累积保真度仅 0.585。超过 40% 的信息在传递中丢失或变形——这是肉眼看不见的，AgentMesh 把它量化出来了。</p>
+<p><strong>贡献度分配</strong>：scout-alpha 贡献略高 (0.5095 vs 0.4905)，因为它在检索阶段提供了更多原始信息，而 forge-beta 的整合虽然价值高但信息损失稍大。</p>
 
 
 
@@ -993,10 +928,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "search.suggest", "search.highlight"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "search.suggest", "search.highlight"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>
