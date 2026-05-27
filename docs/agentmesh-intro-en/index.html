@@ -1,0 +1,1028 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="让Agent协作不再丢信息、贡献可量化">
+      
+      
+      
+        <link rel="canonical" href="https://wangxianjiangwxj-ctrl.github.io/agentmesh/blog/agentmesh-intro-en/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>AgentMesh: Stop Losing Information in Multi-Agent Collaboration - AgentMesh</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#agentmesh-stop-losing-information-in-multi-agent-collaboration" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AgentMesh" class="md-header__button md-logo" aria-label="AgentMesh" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AgentMesh
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              AgentMesh: Stop Losing Information in Multi-Agent Collaboration
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/wangxianjiangwxj-ctrl/agentmesh" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    agentmesh
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AgentMesh" class="md-nav__button md-logo" aria-label="AgentMesh" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AgentMesh
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/wangxianjiangwxj-ctrl/agentmesh" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    agentmesh
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agentmesh-intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    博客
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    首页
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    架构
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    快速开始
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API文档
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API文档
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/sdk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/adapter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A2A适配器
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    示例
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    示例
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/01-two-agent-research/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    两Agent研究协作
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/02-three-agent-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    三Agent代码审查
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/03-cross-a2a-collaboration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    跨A2A协作
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    路线图
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#your-multi-agent-system-is-losing-information-and-you-dont-know-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Your Multi-Agent System Is Losing Information — And You Don't Know It
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#experiment-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Experiment Setup
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-findings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Findings
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agentmesh-4-problems-4-mechanisms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AgentMesh: 4 Problems, 4 Mechanisms
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AgentMesh: 4 Problems, 4 Mechanisms">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-format-template-what-to-say-ab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Format Template — "What to say" (A→B)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-content-template-whats-missing-bc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Content Template — "What's missing" (B→C)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-reviewer-safety-net-whats-wrong-cd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Reviewer Safety Net — "What's wrong" (C→D)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-retroactive-correction-what-to-recover-d-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Retroactive Correction — "What to recover" (D output)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-minute-quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5-Minute Quick Start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-relates-to-a2a" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How It Relates to A2A
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#links" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Links
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="agentmesh-stop-losing-information-in-multi-agent-collaboration">AgentMesh: Stop Losing Information in Multi-Agent Collaboration<a class="headerlink" href="#agentmesh-stop-losing-information-in-multi-agent-collaboration" title="Permanent link">&para;</a></h1>
+<p><strong>A2A lets agents talk. AgentMesh ensures nothing gets lost.</strong></p>
+<hr />
+<h2 id="your-multi-agent-system-is-losing-information-and-you-dont-know-it">Your Multi-Agent System Is Losing Information — And You Don't Know It<a class="headerlink" href="#your-multi-agent-system-is-losing-information-and-you-dont-know-it" title="Permanent link">&para;</a></h2>
+<p>You built a multi-agent system with LangGraph, CrewAI, or AutoGen.</p>
+<p>Agent A retrieves → Agent B synthesizes → Agent C reviews.</p>
+<p>It looks good. But have you asked:</p>
+<p><strong>What key information did B drop when synthesizing A's output? Did C misinterpret A's conclusions? After 3 hops, how much of the original signal remains?</strong></p>
+<p>The answer is: you don't know.</p>
+<p>Existing multi-agent frameworks care about "agents can talk to each other." They don't care about "did they get it right?"</p>
+<p>We ran 9 experiments to quantify the information loss in multi-agent collaboration.</p>
+<hr />
+<h2 id="experiment-setup">Experiment Setup<a class="headerlink" href="#experiment-setup" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Agents</strong>: 2-4 per chain (A→B→C→D)</li>
+<li><strong>Message types</strong>: 5 (TaskRequest / TaskResult / QualityReview / FeedbackLoop / ContributionClaim)</li>
+<li><strong>Evaluation</strong>: Manual review of summary, data, confidence, and fidelity at each hop</li>
+<li><strong>Sample</strong>: 9 independent experiments (exp-001 through exp-009)</li>
+</ul>
+<p><strong>Results confirm</strong>: multi-agent collaboration measurably loses information.</p>
+<hr />
+<h2 id="core-findings">Core Findings<a class="headerlink" href="#core-findings" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>Role</th>
+<th>Rate (without AgentMesh)</th>
+<th>Can You Detect It?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Format conflicts</td>
+<td>A→B</td>
+<td>100% (exp-003/005, N=4)</td>
+<td>Yes, but manual debugging each time</td>
+</tr>
+<tr>
+<td>Critical omissions — B drops A's key data</td>
+<td>B (synthesizer)</td>
+<td>Control: 3 vs Template: 0 (N=6)</td>
+<td>Not without comparing source text</td>
+</tr>
+<tr>
+<td>Fact distortion — C exaggerates individual results</td>
+<td>C (reviewer)</td>
+<td>Naturally occurring (exp-006)</td>
+<td>Requires dedicated review</td>
+</tr>
+<tr>
+<td>Information decay — A→B fidelity drops to 0.585</td>
+<td>A→B→C</td>
+<td>15-35% loss per hop</td>
+<td>Invisible without tracking tools</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The most striking data point</strong>: After 3 hops, cumulative fidelity drops to 0.414 — over half the information is lost or distorted during transfer.</p>
+<hr />
+<h2 id="agentmesh-4-problems-4-mechanisms">AgentMesh: 4 Problems, 4 Mechanisms<a class="headerlink" href="#agentmesh-4-problems-4-mechanisms" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>Role</th>
+<th>Mechanism</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>What to say — A doesn't know the message format</td>
+<td>A</td>
+<td>Format template (5 required fields)</td>
+<td>Conflicts 100%→0%, N=4</td>
+</tr>
+<tr>
+<td>What's missing — B omits A's key info</td>
+<td>B (synthesizer)</td>
+<td>Content template (structured constraints)</td>
+<td>Omissions 3→0, N=6</td>
+</tr>
+<tr>
+<td>What's wrong — C distorts A's conclusions</td>
+<td>C (reviewer)</td>
+<td>Reviewer agent safety net</td>
+<td>Detection rate 100%, N=4</td>
+</tr>
+<tr>
+<td>What to recover — D fixes A→B→C drift</td>
+<td>D (synthesizer)</td>
+<td>Retroactive correction</td>
+<td>4 hops &gt; 3 hops, N=1</td>
+</tr>
+</tbody>
+</table>
+<h3 id="1-format-template-what-to-say-ab">1. Format Template — "What to say" (A→B)<a class="headerlink" href="#1-format-template-what-to-say-ab" title="Permanent link">&para;</a></h3>
+<p>5 required fields: schema_version, message_id, message_type, sender, timestamp. Ensures every message has a consistent structure.</p>
+<p>In our tests (exp-003, exp-005): 100% conflict rate without templates → 0% with templates.</p>
+<h3 id="2-content-template-whats-missing-bc">2. Content Template — "What's missing" (B→C)<a class="headerlink" href="#2-content-template-whats-missing-bc" title="Permanent link">&para;</a></h3>
+<p>Structured constraints prevent B from dropping A's critical fields (summary, data, confidence, fidelity).</p>
+<p>In our tests (exp-005): Control group B missed 3 critical pieces of information. Template-guided group: 0 omissions.</p>
+<h3 id="3-reviewer-safety-net-whats-wrong-cd">3. Reviewer Safety Net — "What's wrong" (C→D)<a class="headerlink" href="#3-reviewer-safety-net-whats-wrong-cd" title="Permanent link">&para;</a></h3>
+<p>An independent reviewer agent (C) checks for reasoning errors before passing results to D.</p>
+<p>In our tests (exp-008, N=4: overgeneralization, false causality, omitted evidence, subjective claims), the reviewer caught all 4 error types.</p>
+<h3 id="4-retroactive-correction-what-to-recover-d-output">4. Retroactive Correction — "What to recover" (D output)<a class="headerlink" href="#4-retroactive-correction-what-to-recover-d-output" title="Permanent link">&para;</a></h3>
+<p>A synthesizer agent (D) traces A→B→C output, identifies accumulated drift, and fixes it.</p>
+<p>In our tests (exp-009): 4-hop chains (A→B→C→D) proved more robust than 3-hop chains — D recovered issues C had missed.</p>
+<hr />
+<h2 id="5-minute-quick-start">5-Minute Quick Start<a class="headerlink" href="#5-minute-quick-start" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>agentmesh-sdk
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agentmesh_sdk</span><span class="w"> </span><span class="kn">import</span> <span class="n">CollaborationFlow</span>
+
+<span class="n">flow</span> <span class="o">=</span> <span class="n">CollaborationFlow</span><span class="p">(</span><span class="s2">&quot;AI Agent Security Survey&quot;</span><span class="p">,</span> <span class="n">use_signing</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">flow</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="s2">&quot;scout-alpha&quot;</span><span class="p">)</span>
+<span class="n">flow</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="s2">&quot;forge-beta&quot;</span><span class="p">)</span>
+
+<span class="c1"># A retrieves → sends to B (with fidelity annotation)</span>
+<span class="n">flow</span><span class="o">.</span><span class="n">step_retrieval</span><span class="p">(</span><span class="s2">&quot;scout-alpha&quot;</span><span class="p">,</span> <span class="s2">&quot;forge-beta&quot;</span><span class="p">,</span>
+    <span class="n">summary</span><span class="o">=</span><span class="s2">&quot;Found 5 AI security papers&quot;</span><span class="p">,</span>
+    <span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;sources&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">},</span>
+    <span class="n">confidence</span><span class="o">=</span><span class="mf">0.85</span><span class="p">,</span> <span class="n">fidelity</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+
+<span class="c1"># B synthesizes → coordinator (with fidelity annotation)</span>
+<span class="n">flow</span><span class="o">.</span><span class="n">step_integration</span><span class="p">(</span><span class="s2">&quot;forge-beta&quot;</span><span class="p">,</span> <span class="s2">&quot;coordinator&quot;</span><span class="p">,</span>
+    <span class="n">summary</span><span class="o">=</span><span class="s2">&quot;Synthesized: 5 sources across 4 research directions&quot;</span><span class="p">,</span>
+    <span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;key_findings&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s2">&quot;gaps&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">},</span>
+    <span class="n">confidence</span><span class="o">=</span><span class="mf">0.78</span><span class="p">,</span> <span class="n">fidelity</span><span class="o">=</span><span class="mf">0.65</span><span class="p">)</span>
+
+<span class="n">report</span> <span class="o">=</span> <span class="n">flow</span><span class="o">.</span><span class="n">full_report</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Conflict rate: </span><span class="si">{</span><span class="n">report</span><span class="p">[</span><span class="s1">&#39;validation&#39;</span><span class="p">][</span><span class="s1">&#39;conflict_rate&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Fidelity: </span><span class="si">{</span><span class="n">flow</span><span class="o">.</span><span class="n">fidelity_tracker</span><span class="o">.</span><span class="n">cumulative_fidelity</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Contributions: </span><span class="si">{</span><span class="n">report</span><span class="p">[</span><span class="s1">&#39;allocation&#39;</span><span class="p">][</span><span class="s1">&#39;shares&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p>Output:</p>
+<div class="highlight"><pre><span></span><code>Conflict rate: 0.0%
+Fidelity: 0.585
+Contributions: {&#39;scout-alpha&#39;: 0.5095, &#39;forge-beta&#39;: 0.4905}
+</code></pre></div>
+<p><strong>Aha Moment</strong>: After just 2 hops, cumulative fidelity drops to 0.585 — over 40% of information lost. Without AgentMesh, this decay is invisible.</p>
+<hr />
+<h2 id="how-it-relates-to-a2a">How It Relates to A2A<a class="headerlink" href="#how-it-relates-to-a2a" title="Permanent link">&para;</a></h2>
+<p>A2A (Agent-to-Agent Protocol) enables agents built on different frameworks to communicate.</p>
+<p>AgentMesh adds the layer that A2A leaves out: fidelity tracking and contribution allocation.</p>
+<p>We built an A2A adapter that passes fidelity and confidence metadata through the A2A protocol. This adapter has been verified end-to-end via HTTP JSON-RPC — any A2A-compatible server can exchange messages with AgentMesh agents while preserving fidelity data.</p>
+<hr />
+<h2 id="links">Links<a class="headerlink" href="#links" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>GitHub</strong>: <a href="https://github.com/wangxianjiangwxj-ctrl/agentmesh">github.com/wangxianjiangwxj-ctrl/agentmesh</a></li>
+<li><strong>Documentation</strong>: <a href="https://wangxianjiangwxj-ctrl.github.io/agentmesh/">wangxianjiangwxj-ctrl.github.io/agentmesh</a></li>
+<li><strong>Web Demo</strong>: <a href="https://wangxianjiangwxj-ctrl.github.io/agentmesh/demo/fidelity-demo.html">Fidelity Visualization</a></li>
+<li><strong>Install</strong>: <code>pip install agentmesh-sdk</code> (PyPI pending, or <code>pip install git+https://github.com/wangxianjiangwxj-ctrl/agentmesh.git</code>)</li>
+</ul>
+<hr />
+<p><strong>AgentMesh — A2A lets agents talk. AgentMesh ensures nothing gets lost and contributions are quantified.</strong></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "search.suggest", "search.highlight"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
