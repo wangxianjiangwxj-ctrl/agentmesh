@@ -1,0 +1,41 @@
+docs_dir: .
+markdown_extensions:
+- admonition
+- codehilite
+- toc:
+    permalink: true
+- pymdownx.superfences
+nav:
+- 博客: blog/agentmesh-intro.md
+- Blog EN: blog/agentmesh-intro-en.md
+- 首页: index.md
+- 架构: architecture.md
+- 快速开始: quickstart.md
+- API文档:
+  - SDK: api/sdk.md
+  - A2A适配器: api/adapter.md
+- 示例:
+  - 两Agent研究协作: examples/01-two-agent-research.md
+  - 三Agent代码审查: examples/02-three-agent-review.md
+  - 跨A2A协作: examples/03-cross-a2a-collaboration.md
+- CLI: cli.md
+- 路线图: roadmap.md
+plugins:
+- search
+- macros
+repo_name: agentmesh
+repo_url: https://github.com/wangxianjiangwxj-ctrl/agentmesh
+site_description: 让Agent协作不再丢信息、贡献可量化
+site_name: AgentMesh
+site_url: https://wangxianjiangwxj-ctrl.github.io/agentmesh
+theme:
+  features:
+  - navigation.instant
+  - navigation.tracking
+  - navigation.top
+  - search.suggest
+  - search.highlight
+  name: material
+  palette:
+    accent: teal
+    primary: indigo
