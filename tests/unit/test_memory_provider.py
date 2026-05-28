@@ -136,8 +136,8 @@ class TestA2ATaskManager:
 
         children = self.mgr.get_children("parent")
         assert len(children) == 2
-        assert children[0]["id"] == "child_1"
-        assert children[1]["id"] == "child_2"
+        assert children[0]["task_id"] == "child_1"
+        assert children[1]["task_id"] == "child_2"
 
     def test_nonexistent_parent_children(self):
         assert self.mgr.get_children("no_such_task") == []
