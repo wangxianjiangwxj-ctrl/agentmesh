@@ -14,6 +14,15 @@ Each example builds on the previous one.
 | [05](05-remote-a2a-server/) | Remote A2A Server/Client | Python (HttpProvider) | Intermediate | Python 3.10+ |
 | [06](06-cli-workflow/) | CLI Workflow | Shell (agentmesh CLI) | Advanced | CLI installed |
 
+### Additional Examples
+
+| File | Type | Description |
+|------|------|-------------|
+| [a2a-bridge-http.py](./a2a-bridge-http.py) | Python | A2A bridge over HTTP (alternative to 05) |
+| [a2a-bridge-memory.py](./a2a-bridge-memory.py) | Python | A2A bridge in-memory (alternative to 04) |
+| [crewai-integration.py](./crewai-integration.py) | Python | CrewAI + A2A integration example |
+| [langgraph-integration.py](./langgraph-integration.py) | Python | LangGraph + A2A integration example |
+
 ### Learning Path
 
 ```
