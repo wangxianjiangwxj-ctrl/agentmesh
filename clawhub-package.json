@@ -1,0 +1,15 @@
+{
+  "name": "AgentMesh Protocol",
+  "slug": "agentmesh-protocol",
+  "version": "0.3.0-alpha",
+  "description": "A2A lets agents talk. AgentMesh ensures nothing gets lost. Fidelity tracking, contribution allocation, and structured templates for multi-agent collaboration.",
+  "tags": ["agent", "a2a", "fidelity", "multi-agent", "collaboration", "protocol"],
+  "author": "AgentMesh",
+  "license": "MIT",
+  "homepage": "https://github.com/wangxianjiangwxj-ctrl/agentmesh",
+  "min_gateway_version": "0.1.0",
+  "categories": ["protocol", "agent-collaboration"],
+  "keywords": ["agentmesh", "a2a", "fidelity-tracking", "agent-collaboration"],
+  "screenshots": [],
+  "release_notes": "Initial alpha release. SDK v0.3 with A2A adapter, fidelity tracking, and contribution allocation."
+}
