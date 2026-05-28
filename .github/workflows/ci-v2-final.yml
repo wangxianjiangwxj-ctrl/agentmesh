@@ -87,6 +87,32 @@ jobs:
           directory: ${{ matrix.dir }}
           fail_ci_if_error: false
 
+  test-sdk:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install deps
+        run: |
+          pip install pytest pytest-cov
+      - name: SDK unit tests
+        run: |
+          cd sdk
+          python -m pytest ../tests/unit/ -v --cov=a2a_provider --cov-report=term-missing --cov-report=xml
+        env:
+          PYTHONPATH: sdk
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          directory: sdk
+          fail_ci_if_error: false
+
   docs-build:
     runs-on: ubuntu-latest
     steps:
