@@ -1,0 +1,123 @@
+# AgentMesh CI v2 — Phase 11 线A 执行版
+# Trunk-based: push main + PR main
+# 修复: publish_dir → site/, ruff 硬失败, docs 严格构建
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dir: [cli, sdk]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dev deps (${{ matrix.dir }})
+        run: |
+          cd ${{ matrix.dir }}
+          pip install ruff mypy
+      - name: Ruff lint (${{ matrix.dir }})
+        run: |
+          cd ${{ matrix.dir }}
+          ruff check . --output-format=github
+      - name: Ruff format check (${{ matrix.dir }})
+        run: |
+          cd ${{ matrix.dir }}
+          ruff format --check .
+
+  typecheck:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dir: [cli, sdk]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install deps (${{ matrix.dir }})
+        run: |
+          cd ${{ matrix.dir }}
+          pip install mypy
+          if [ -f pyproject.toml ]; then
+            pip install -e ".[dev]" 2>/dev/null || true
+          fi
+      - name: mypy (${{ matrix.dir }})
+        run: |
+          cd ${{ matrix.dir }}
+          mypy .
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+        dir: [cli, sdk]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install deps (${{ matrix.dir }})
+        run: |
+          cd ${{ matrix.dir }}
+          pip install -e ".[dev]" 2>/dev/null || pip install pytest pytest-cov
+      - name: Test with pytest (${{ matrix.dir }})
+        run: |
+          cd ${{ matrix.dir }}
+          python -m pytest tests/ -v --cov=agentmesh --cov-report=term-missing --cov-report=xml
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          directory: ${{ matrix.dir }}
+          fail_ci_if_error: false
+
+  docs-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install mkdocs
+        run: pip install mkdocs mkdocs-material mkdocs-macros-plugin
+      - name: Build docs
+        run: mkdocs build --strict
+
+  deploy-docs:
+    needs: [test, docs-build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install mkdocs
+        run: pip install mkdocs mkdocs-material mkdocs-macros-plugin
+      - name: Build docs
+        run: mkdocs build --strict
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          publish_branch: gh-pages
