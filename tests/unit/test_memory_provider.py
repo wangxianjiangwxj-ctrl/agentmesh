@@ -1,12 +1,7 @@
 """Unit tests for MemoryProvider — the in-process A2A Server simulation."""
 
-import os
-import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "sdk"))
-
 import pytest
-from a2a_provider import (
+from agentmesh.a2a.provider import (
     MemoryProvider,
     A2AProvider,
     A2AResult,
