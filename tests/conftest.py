@@ -5,8 +5,15 @@ import sys
 
 import pytest
 
-# Add SDK to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "sdk"))
+from agentmesh.a2a.provider import (
+    A2AProvider,
+    MemoryProvider,
+    A2AResult,
+    A2AError,
+    A2ATaskManager,
+    A2ATaskState,
+    A2AFacade,
+)
 
 
 @pytest.fixture

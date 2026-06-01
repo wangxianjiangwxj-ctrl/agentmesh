@@ -27,6 +27,9 @@ import dataclasses
 import enum
 from typing import Any, Dict, List, Optional, Protocol, TypeVar
 
+# CardStatus is imported from the CrewAI adapter for shared enum usage
+from .crewai_adapter import CardStatus
+
 
 # ---------------------------------------------------------------------------
 # Type aliases

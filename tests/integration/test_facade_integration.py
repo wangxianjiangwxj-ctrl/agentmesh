@@ -5,13 +5,8 @@ Tests cover the full lifecycle that real A2A agents would exercise:
 create -> submit -> work -> complete/cancel, plus error handling.
 """
 
-import os
-import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "sdk"))
-
 import pytest
-from a2a_provider import (
+from agentmesh.a2a.provider import (
     MemoryProvider,
     A2AProvider,
     A2AResult,
