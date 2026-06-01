@@ -1,0 +1,4 @@
+.DS_Store
+mkdocs_test.yml
+/__pycache__/
+*.pyc

@@ -1,4 +1,4 @@
-docs_dir: .
+docs_dir: docs
 markdown_extensions:
 - admonition
 - codehilite
@@ -13,6 +13,13 @@ nav:
 - API文档:
   - SDK: api/sdk.md
   - A2A适配器: api/adapter.md
+- API Reference (自动生成):
+  - 概述: api-reference/index.md
+  - Trace: api-reference/trace.md
+  - Log: api-reference/log.md
+  - Provider: api-reference/provider.md
+  - CrewAI Adapter: api-reference/crewai.md
+  - AutoGen Adapter: api-reference/autogen.md
 - 示例:
   - 两Agent研究协作: examples/01-two-agent-research.md
   - 三Agent代码审查: examples/02-three-agent-review.md
@@ -22,6 +29,12 @@ nav:
 plugins:
 - search
 - macros
+- mkdocstrings:
+    handlers:
+      python:
+        paths: [.]
+        options:
+          docstring_style: google
 repo_name: agentmesh
 repo_url: https://github.com/wangxianjiangwxj-ctrl/agentmesh
 site_description: 让Agent协作不再丢信息、贡献可量化
