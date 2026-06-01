@@ -486,11 +486,11 @@ class AutoGenAdapterBase(abc.ABC):
 
         Returns:
             Dict with keys:
-              - "status": "ok" | "degraded" | "down"
-              - "server_url": str
-              - "latency_ms": float
-              - "registered_agents": int
-              - "active_conversations": int
+                - "status": "ok" | "degraded" | "down"
+                - "server_url": str
+                - "latency_ms": float
+                - "registered_agents": int
+                - "active_conversations": int
         """
         ...
 
@@ -1519,11 +1519,11 @@ class AutoGenAdapter(AutoGenAdapterBase):
 
         Returns:
             Dict with keys:
-              - "status": "ok" | "degraded" | "down"
-              - "server_url": str
-              - "latency_ms": float
-              - "registered_agents": int
-              - "active_conversations": int
+                - "status": "ok" | "degraded" | "down"
+                - "server_url": str
+                - "latency_ms": float
+                - "registered_agents": int
+                - "active_conversations": int
         """
         start = time.monotonic()
         try:

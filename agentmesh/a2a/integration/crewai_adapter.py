@@ -418,10 +418,10 @@ class CrewAIAdapterBase(abc.ABC):
 
         Returns:
             Dict with keys:
-              - "status": "ok" | "degraded" | "down"
-              - "server_url": str
-              - "latency_ms": float
-              - "registered_agents": int
+                - "status": "ok" | "degraded" | "down"
+                - "server_url": str
+                - "latency_ms": float
+                - "registered_agents": int
         """
         ...
 
