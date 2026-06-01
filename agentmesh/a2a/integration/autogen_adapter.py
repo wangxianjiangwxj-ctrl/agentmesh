@@ -1,24 +1,26 @@
-# AgentMesh A2A — AutoGen Integration Adapter (Skeleton)
-#
-# Phase 13, Direction 5: Real Agent Framework Integration.
-# This module defines the abstract interface for integrating AgentMesh A2A
-# with AutoGen (pyautogen). The adapter wraps AgentMesh as a communication
-# layer for AutoGen ConversableAgent instances, enabling cross-framework
-# agent messaging via AgentMesh.
-#
-# AutoGen Integration Approach (Provider Layer):
-#   - A2AAgent: A ConversableAgent subclass that routes send()/receive()
-#     through the AgentMesh A2A server instead of direct in-process calls.
-#   - AutoGenAdapterBase: High-level orchestrator that creates agents,
-#     manages groups, and bridges AutoGen GroupChat with AgentMesh.
-#
-# Workflow:
-#   1. User instantiates AutoGenAdapterBase with an AgentMesh server URL
-#   2. Calls create_agent() to get an AutoGen agent wired via AgentMesh
-#   3. Optionally calls create_group_chat() for multi-agent discussions
-#   4. Messages flow through AgentMesh, enabling cross-framework routing
-#
-# Reference: research/phase13-integration-plan.md — Task 2
+"""AgentMesh A2A -- AutoGen Integration Adapter.
+
+Phase 13, Direction 5: Real Agent Framework Integration.
+This module defines the abstract interface for integrating AgentMesh A2A
+with AutoGen (pyautogen). The adapter wraps AgentMesh as a communication
+layer for AutoGen ConversableAgent instances, enabling cross-framework
+agent messaging via AgentMesh.
+
+AutoGen Integration Approach (Provider Layer):
+  - A2AAgent: A ConversableAgent subclass that routes send()/receive()
+    through the AgentMesh A2A server instead of direct in-process calls.
+  - AutoGenAdapterBase: High-level orchestrator that creates agents,
+    manages groups, and bridges AutoGen GroupChat with AgentMesh.
+
+Workflow:
+  1. User instantiates AutoGenAdapterBase with an AgentMesh server URL
+  2. Calls create_agent() to get an AutoGen agent wired via AgentMesh
+  3. Optionally calls create_group_chat() for multi-agent discussions
+  4. Messages flow through AgentMesh, enabling cross-framework routing
+
+Reference: research/phase13-integration-plan.md -- Task 2
+"""
+
 
 from __future__ import annotations
 

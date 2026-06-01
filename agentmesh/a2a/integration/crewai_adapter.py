@@ -1,23 +1,25 @@
-# AgentMesh A2A — CrewAI Integration Adapter (Skeleton)
-#
-# Phase 13, Direction 5: Real Agent Framework Integration.
-# This module defines the abstract interface for integrating AgentMesh A2A
-# with CrewAI. The adapter wraps AgentMesh operations as CrewAI BaseTool
-# instances, enabling seamless agent-to-agent communication via AgentMesh.
-#
-# CrewAI Integration Approach (Provider Layer):
-#   - A2ATool: A CrewAI BaseTool subclass that sends/receives Cards through
-#     the AgentMesh A2A server. Agents use this tool to exchange messages.
-#   - CrewAIAdapterBase: High-level orchestrator that creates agents,
-#     registers tools, and manages the AgentMesh connection.
-#
-# Workflow:
-#   1. User instantiates CrewAIAdapterBase with an AgentMesh server URL
-#   2. Calls create_agent() to get a CrewAI Agent wired with A2ATool
-#   3. Agents communicate by invoking the tool, which relays Cards
-#      through AgentMesh to other agents
-#
-# Reference: research/phase13-integration-plan.md — Task 1
+"""AgentMesh A2A -- CrewAI Integration Adapter.
+
+Phase 13, Direction 5: Real Agent Framework Integration.
+This module defines the abstract interface for integrating AgentMesh A2A
+with CrewAI. The adapter wraps AgentMesh operations as CrewAI BaseTool
+instances, enabling seamless agent-to-agent communication via AgentMesh.
+
+CrewAI Integration Approach (Provider Layer):
+  - A2ATool: A CrewAI BaseTool subclass that sends/receives Cards through
+    the AgentMesh A2A server. Agents use this tool to exchange messages.
+  - CrewAIAdapterBase: High-level orchestrator that creates agents,
+    registers tools, and manages the AgentMesh connection.
+
+Workflow:
+  1. User instantiates CrewAIAdapterBase with an AgentMesh server URL
+  2. Calls create_agent() to get a CrewAI Agent wired with A2ATool
+  3. Agents communicate by invoking the tool, which relays Cards
+     through AgentMesh to other agents
+
+Reference: research/phase13-integration-plan.md -- Task 1
+"""
+
 
 from __future__ import annotations
 

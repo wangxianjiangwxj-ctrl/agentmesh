@@ -1,18 +1,20 @@
-# AgentMesh A2A — End-to-End Integration Test Skeleton
-#
-# Phase 13, Direction 5: Real Agent Framework Integration.
-# This module defines the integration test matrix and verification scenarios
-# for cross-framework agent communication through AgentMesh.
-#
-# The test matrix covers 8 scenarios:
-#   CrewAI  --> CrewAI     (TextCard)
-#   CrewAI  --> AutoGen    (TextCard)
-#   AutoGen --> AutoGen    (TextCard)
-#   AutoGen --> CrewAI     (TextCard)
-#   Custom  --> CrewAI     (DataCard)
-#   Custom  --> AutoGen    (DataCard)
-#   CrewAI  --> Custom     (ToolCallCard)
-#   AutoGen --> Custom     (ToolCallCard)
+"""AgentMesh A2A -- End-to-End Integration Test Matrix.
+
+Phase 13, Direction 5: Real Agent Framework Integration.
+This module defines the integration test matrix and verification scenarios
+for cross-framework agent communication through AgentMesh.
+
+The test matrix covers 8 scenarios:
+  CrewAI  --> CrewAI     (TextCard)
+  CrewAI  --> AutoGen    (TextCard)
+  AutoGen --> AutoGen    (TextCard)
+  AutoGen --> CrewAI     (TextCard)
+  Custom  --> CrewAI     (DataCard)
+  Custom  --> AutoGen    (DataCard)
+  CrewAI  --> Custom     (ToolCallCard)
+  AutoGen --> Custom     (ToolCallCard)
+"""
+
 #
 # Usage (standalone):
 #   python -m agentmesh.a2a.integration.e2e_test
