@@ -4,13 +4,8 @@ Tests cover message format, required fields, and A2A protocol compliance
 based on the A2A specification v0.1 draft.
 """
 
-import os
-import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "sdk"))
-
 import pytest
-from a2a_provider import (
+from agentmesh.a2a.provider import (
     A2AResult,
     A2AError,
     A2ATaskState,

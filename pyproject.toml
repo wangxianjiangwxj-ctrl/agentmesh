@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "agentmesh"
+version = "0.3.0"
+description = "A2A (Agent-to-Agent) protocol adapter and orchestration middleware"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+
+[project.urls]
+Homepage = "https://github.com/wangxianjiangwxj-ctrl/agentmesh"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agentmesh*"]
