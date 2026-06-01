@@ -20,7 +20,7 @@ import sys, os, json, uuid, time, threading
 from datetime import datetime, timezone
 
 # SDK路径
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'sdk'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'agentmesh'))
 
 from a2a_provider import (
     A2AProvider, MemoryProvider, A2AFacade,

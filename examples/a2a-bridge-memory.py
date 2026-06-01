@@ -14,8 +14,8 @@ AgentMesh A2A Bridge — MemoryProvider 两Agent通信示例
 import sys, os, json, uuid
 from datetime import datetime, timezone
 
-# SDK路径：从 examples/ 到 sdk/
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'sdk'))
+# SDK路径：从 examples/ 到 agentmesh/
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'agentmesh'))
 
 from a2a_provider import (
     A2AProvider, MemoryProvider, A2AFacade,

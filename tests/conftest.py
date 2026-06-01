@@ -6,7 +6,7 @@ import sys
 import pytest
 
 # Add SDK to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "sdk"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "agentmesh"))
 
 
 @pytest.fixture

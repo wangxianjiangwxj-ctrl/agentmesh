@@ -5,7 +5,7 @@ AgentMesh + LangGraph 集成示例
 """
 
 import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'sdk'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'agentmesh'))
 # SDK files were moved to GitHub repo; also check skill directory
 sys.path.insert(0, os.path.expanduser('~/.openclaw/skills/agentmesh-protocol/'))
 

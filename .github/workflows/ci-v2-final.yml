@@ -16,78 +16,38 @@ concurrency:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        dir: [cli, sdk]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
-      - name: Install dev deps (${{ matrix.dir }})
+      - name: Install dev deps
         run: |
-          cd ${{ matrix.dir }}
           pip install ruff mypy
-      - name: Ruff lint (${{ matrix.dir }})
+      - name: Ruff lint (agentmesh)
         run: |
-          cd ${{ matrix.dir }}
-          ruff check . --output-format=github
-      - name: Ruff format check (${{ matrix.dir }})
+          ruff check agentmesh --output-format=github
+      - name: Ruff format check
         run: |
-          cd ${{ matrix.dir }}
-          ruff format --check .
+          ruff format --check agentmesh
 
   typecheck:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        dir: [cli, sdk]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
-      - name: Install deps (${{ matrix.dir }})
+      - name: Install deps
         run: |
-          cd ${{ matrix.dir }}
           pip install mypy
-          if [ -f pyproject.toml ]; then
-            pip install -e ".[dev]" 2>/dev/null || true
-          fi
-      - name: mypy (${{ matrix.dir }})
+      - name: mypy (agentmesh)
         run: |
-          cd ${{ matrix.dir }}
-          mypy .
+          mypy agentmesh
 
   test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.10", "3.11", "3.12"]
-        dir: [cli, sdk]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: pip
-      - name: Install deps (${{ matrix.dir }})
-        run: |
-          cd ${{ matrix.dir }}
-          pip install -e ".[dev]" 2>/dev/null || pip install pytest pytest-cov
-      - name: Test with pytest (${{ matrix.dir }})
-        run: |
-          cd ${{ matrix.dir }}
-          python -m pytest tests/ -v --cov=agentmesh --cov-report=term-missing --cov-report=xml
-      - name: Upload coverage
-        uses: codecov/codecov-action@v4
-        with:
-          directory: ${{ matrix.dir }}
-          fail_ci_if_error: false
-
-  test-sdk:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -101,16 +61,15 @@ jobs:
       - name: Install deps
         run: |
           pip install pytest pytest-cov
-      - name: SDK unit tests
+      - name: Tests (unit + integration + e2e)
         run: |
-          cd sdk
-          python -m pytest ../tests/unit/ -v --cov=a2a_provider --cov-report=term-missing --cov-report=xml
+          python -m pytest tests/ -v --cov=agentmesh --cov-report=term-missing --cov-report=xml
         env:
-          PYTHONPATH: sdk
+          PYTHONPATH: .
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:
-          directory: sdk
+          directory: .
           fail_ci_if_error: false
 
   docs-build:
