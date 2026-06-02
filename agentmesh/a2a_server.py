@@ -43,12 +43,18 @@ from typing import Any, AsyncGenerator, List, Optional
 
 from agentmesh.a2a import StructuredLogger, with_trace_context, TraceProvider
 
+# Import timeout/retry configs from models
+from agentmesh.a2a_models import ServerTimeoutConfig, DEFAULT_TIMEOUT_CONFIG
+
 
 log = StructuredLogger("a2a-server")
 
 
 # Server start time (set when _build_app() first creates an app)
 _server_start_time: Optional[float] = None
+
+# Default server timeout configuration (can be overridden at build time)
+_timeout_config: ServerTimeoutConfig = DEFAULT_TIMEOUT_CONFIG
 
 
 def _get_version() -> str:
@@ -218,7 +224,8 @@ class A2AResponse:
 # ===================================================================
 
 
-def _build_app(facade: Optional[A2AFacade] = None):
+def _build_app(facade: Optional[A2AFacade] = None,
+                timeout_config: Optional[ServerTimeoutConfig] = None):
     """Build a FastAPI application wrapping the given A2AFacade.
 
     To integrate into an existing FastAPI app, import this function
@@ -236,14 +243,17 @@ def _build_app(facade: Optional[A2AFacade] = None):
         GET  /agents        - List registered agent cards
         POST /agents        - Register an agent card
     """
+    import asyncio as _asyncio
     from fastapi import Body, FastAPI, Request
     from starlette.exceptions import HTTPException as StarletteHTTPException
     from starlette.responses import JSONResponse, StreamingResponse
 
     # Record server start time on first app build
-    global _server_start_time
+    global _server_start_time, _timeout_config
     if _server_start_time is None:
         _server_start_time = time.time()
+    if timeout_config is not None:
+        _timeout_config = timeout_config
 
     if facade is None:
         provider = MemoryProvider("a2a-server")
@@ -251,6 +261,48 @@ def _build_app(facade: Optional[A2AFacade] = None):
         facade = A2AFacade(provider=provider, task_manager=task_manager)
 
     app = FastAPI(title="AgentMesh A2A Server", version=_get_version())
+
+    # -----------------------------------------------------------------------
+    # Request tracing middleware — inject trace context per request
+    # -----------------------------------------------------------------------
+
+    # -----------------------------------------------------------------------
+    # Request processing timeout middleware
+    # -----------------------------------------------------------------------
+
+    @app.middleware("http")
+    async def _timeout_middleware(request: Request, call_next):
+        """Wrap request handler with a configurable timeout.
+
+        If the handler exceeds ``_timeout_config.request_timeout`` seconds,
+        the middleware raises ``asyncio.TimeoutError`` and returns a 503
+        response to the client.
+        """
+        timeout = _timeout_config.request_timeout
+        if timeout > 0:
+            try:
+                response = await _asyncio.wait_for(
+                    call_next(request), timeout=timeout
+                )
+            except _asyncio.TimeoutError:
+                log.warn("request_timeout",
+                         method=request.method,
+                         path=request.url.path,
+                         timeout=timeout)
+                return JSONResponse(
+                    status_code=503,
+                    content={
+                        "success": False,
+                        "error": {
+                            "code": "SERVICE_UNAVAILABLE",
+                            "message": f"Request timed out after {timeout}s",
+                            "recoverable": True,
+                        }
+                    },
+                )
+        else:
+            response = await call_next(request)
+        return response
 
     # -----------------------------------------------------------------------
     # Request tracing middleware — inject trace context per request
@@ -417,9 +469,18 @@ def _build_app(facade: Optional[A2AFacade] = None):
         its lifecycle (submitted -> working -> completed/canceled/failed).
         Each event has type "state", "completed", or "done".
 
+        The stream enforces an idle timeout configured via
+        ``_timeout_config.stream_idle_timeout``. If no data is sent
+        for that duration, the stream sends a "stream_timeout" event
+        and closes.
+
         Example:
             curl -N http://localhost:8080/stream/task_001
         """
+        import time as _time
+
+        idle_timeout = _timeout_config.stream_idle_timeout
+
         task = facade.get_task(task_id)
         if not task.success:
             async def _err_stream() -> AsyncGenerator[bytes, None]:
@@ -428,9 +489,12 @@ def _build_app(facade: Optional[A2AFacade] = None):
             return StreamingResponse(_err_stream(), media_type="text/event-stream")
 
         async def _stream() -> AsyncGenerator[bytes, None]:
+            last_activity = _time.monotonic()
+
             # 1. Emit current state immediately
             result = facade.get_task(task_id)
             yield _sse_event("state", result)
+            last_activity = _time.monotonic()
 
             # 2. If submitted, simulate step-through progress
             if result.task_state == "submitted":
@@ -440,6 +504,20 @@ def _build_app(facade: Optional[A2AFacade] = None):
                     ("working", "Generating result...", 1.5),
                 ]
                 for state, msg, delay in stages:
+                    # Check idle timeout before each delay
+                    if idle_timeout > 0:
+                        elapsed = _time.monotonic() - last_activity
+                        if elapsed > idle_timeout:
+                            yield _sse_event("stream_timeout", {
+                                "idle_seconds": elapsed,
+                                "timeout": idle_timeout,
+                            })
+                            yield _sse_event("done", {
+                                "success": False,
+                                "data": {"message": "Stream idle timeout"},
+                            })
+                            return
+
                     await asyncio.sleep(delay)
                     tasks = facade.provider._tasks
                     if task_id in tasks:
@@ -448,6 +526,7 @@ def _build_app(facade: Optional[A2AFacade] = None):
                         tasks[task_id]["status"]["timestamp"] = time.time()
                     result = facade.get_task(task_id)
                     yield _sse_event("state", result)
+                    last_activity = _time.monotonic()
 
                 # Mark as completed
                 if task_id in tasks:
@@ -540,10 +619,24 @@ class HttpProvider(A2AProvider):
         result = provider.cancel_task("t1")
     """
 
-    def __init__(self, base_url: str = "http://localhost:8080", name: str = "http"):
+    def __init__(self, base_url: str = "http://localhost:8080", name: str = "http",
+                 timeout_config: Optional[ServerTimeoutConfig] = None,
+                 max_retries: int = 3,
+                 backoff_factor: float = 1.0):
+        """
+        Args:
+            base_url: Server base URL.
+            name: Provider name.
+            timeout_config: Timeout settings (connection, read, request).
+            max_retries: Max HTTP retry attempts on transient failure (0 = no retry).
+            backoff_factor: Exponential backoff multiplier in seconds.
+        """
         super().__init__(name)
         self.base_url = base_url.rstrip("/")
         self._capabilities = {"http", "network"}
+        self._timeout_config = timeout_config or ServerTimeoutConfig()
+        self._max_retries = max_retries
+        self._backoff_factor = backoff_factor
 
     # ---- A2AProvider interface ----
 
@@ -581,7 +674,13 @@ class HttpProvider(A2AProvider):
                 if event_type == "done":
                     break
         """
-        return SSEStream(self.base_url, task_id)
+        return SSEStream(
+            self.base_url, task_id,
+            max_retries=self._max_retries,
+            backoff_factor=self._backoff_factor,
+            timeout=int(self._timeout_config.connect_timeout),
+            heartbeat_timeout=self._timeout_config.stream_idle_timeout,
+        )
 
     # ---- Internal HTTP helpers ----
 
@@ -601,18 +700,58 @@ class HttpProvider(A2AProvider):
         return self._do_request(req)
 
     def _do_request(self, req: urllib.request.Request) -> dict:
-        try:
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                body = resp.read().decode("utf-8")
-                return json.loads(body)
-        except urllib.error.HTTPError as e:
-            body = e.read().decode("utf-8")
+        """Execute an HTTP request with configurable timeout and automatic retry.
+
+        Retries on:
+        - 5xx server errors (500, 502, 503, 504)
+        - 429 rate limit
+        - Network-level exceptions (ConnectionError, TimeoutError, OSError)
+
+        Does NOT retry on:
+        - 4xx client errors (except 429)
+        - Non-network exceptions
+
+        Retry uses exponential backoff with jitter.
+        """
+        import random as _random
+        import time as _time
+
+        timeout = int(self._timeout_config.read_timeout) if hasattr(self, '_timeout_config') else 10
+        max_retries = getattr(self, '_max_retries', 3)
+        backoff_factor = getattr(self, '_backoff_factor', 1.0)
+
+        for attempt in range(1 + max_retries):
             try:
-                return json.loads(body)
-            except json.JSONDecodeError:
-                return {"success": False, "error": {"code": e.code, "message": body, "recoverable": True}}
-        except (urllib.error.URLError, OSError, TimeoutError) as e:
-            return {"success": False, "error": {"code": 503, "message": str(e), "recoverable": True}}
+                with urllib.request.urlopen(req, timeout=timeout) as resp:
+                    body = resp.read().decode("utf-8")
+                    return json.loads(body)
+            except urllib.error.HTTPError as e:
+                body = e.read().decode("utf-8")
+                try:
+                    result = json.loads(body)
+                except json.JSONDecodeError:
+                    result = {"success": False,
+                              "error": {"code": e.code, "message": body, "recoverable": True}}
+
+                # Retry on 5xx and 429; do NOT retry on 4xx
+                if attempt < max_retries and (e.code == 429 or e.code >= 500):
+                    delay = min(backoff_factor * (2 ** attempt), 30.0)
+                    jitter = delay * _random.uniform(0, 0.25)
+                    _time.sleep(delay + jitter)
+                    continue
+                return result
+
+            except (urllib.error.URLError, OSError, TimeoutError) as e:
+                if attempt < max_retries:
+                    delay = min(backoff_factor * (2 ** attempt), 30.0)
+                    jitter = delay * _random.uniform(0, 0.25)
+                    _time.sleep(delay + jitter)
+                    continue
+                return {"success": False,
+                        "error": {"code": 503, "message": str(e), "recoverable": True}}
+
+        return {"success": False,
+                "error": {"code": 503, "message": "Request failed after retries", "recoverable": False}}
 
     # Map from string error codes (new unified format) to HTTP int codes
     _STRING_TO_INT_CODE = {
@@ -842,11 +981,18 @@ def create_http_provider(base_url: str = "http://localhost:8080") -> HttpProvide
 # ===================================================================
 
 
-def cmd_server(port: int = 8080, daemon: bool = False):
-    """Start the A2A test server."""
+def cmd_server(port: int = 8080, daemon: bool = False,
+               timeout_config: Optional[ServerTimeoutConfig] = None):
+    """Start the A2A test server.
+
+    Args:
+        port: Server port (default: 8080).
+        daemon: Fork to background.
+        timeout_config: Optional timeout configuration override.
+    """
     import uvicorn
 
-    app = _build_app()
+    app = _build_app(timeout_config=timeout_config)
     log_level = "info"
 
     if daemon:
