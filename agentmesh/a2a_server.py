@@ -30,6 +30,7 @@ Design:
 import asyncio
 import http.client
 import json
+import logging
 import os
 import subprocess
 import sys
@@ -39,6 +40,37 @@ import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 from typing import Any, AsyncGenerator, List, Optional
+
+
+logger = logging.getLogger(__name__)
+
+
+# Server start time (set when _build_app() first creates an app)
+_server_start_time: Optional[float] = None
+
+
+def _get_version() -> str:
+    """Return the AgentMesh package version.
+
+    Attempts to read from importlib metadata first, then from
+    the agentmesh package __version__ attribute, and finally
+    falls back to "dev".
+    """
+    # Try importlib.metadata (works when installed as package)
+    try:
+        import importlib.metadata
+        return importlib.metadata.version("agentmesh")
+    except (ImportError, LookupError):
+        pass
+
+    # Try direct import of __version__
+    try:
+        from agentmesh import __version__
+        return __version__
+    except (ImportError, AttributeError):
+        pass
+
+    return "dev"
 
 
 # pydantic models for API — defined at module level for Python 3.9 compat
@@ -63,6 +95,55 @@ class _AgentCardRequest(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Custom Exceptions
+# ---------------------------------------------------------------------------
+
+
+class A2AServerError(Exception):
+    """Unified server exception that maps to a structured JSON error response.
+
+    Raise this in route handlers to produce a consistent error response:
+
+        raise A2AServerError(
+            status_code=404,
+            code="TASK_NOT_FOUND",
+            message="Task abc-123 not found",
+        )
+
+    Attributes:
+        status_code: HTTP status code (400, 404, 500, 503, etc.)
+        code: Machine-readable error code string
+        message: Human-readable error description
+    """
+    def __init__(self, status_code: int, code: str, message: str):
+        self.status_code = status_code
+        self.code = code
+        self.message = message
+        super().__init__(f"[{status_code}] {code}: {message}")
+
+
+# Map from HTTP status code to canonical error code string
+ERROR_CODE_MAP: dict[int, str] = {
+    400: "INVALID_REQUEST",
+    404: "NOT_FOUND",
+    405: "INVALID_REQUEST",
+    422: "VALIDATION_ERROR",
+    429: "SERVICE_UNAVAILABLE",
+    500: "INTERNAL_ERROR",
+    503: "SERVICE_UNAVAILABLE",
+}
+
+
+# Map from internal A2AError code (int) to canonical error code string
+INTERNAL_TO_ERROR_CODE: dict[int, str] = {
+    400: "INVALID_REQUEST",
+    404: "NOT_FOUND",
+    409: "INVALID_REQUEST",
+    500: "INTERNAL_ERROR",
+}
+
+
+# ---------------------------------------------------------------------------
 # Import from a2a_provider (same package)
 # ---------------------------------------------------------------------------
 
@@ -75,6 +156,7 @@ try:
         A2ATaskManager,
         A2ATaskState,
         MemoryProvider,
+        ProviderError,
     )
 except ImportError:
     # Allow running directly as __main__ before package is installed
@@ -87,6 +169,7 @@ except ImportError:
         A2ATaskManager,
         A2ATaskState,
         MemoryProvider,
+        ProviderError,
     )
 
 
@@ -143,24 +226,90 @@ def _build_app(facade: Optional[A2AFacade] = None):
         app.mount("/a2a", _build_app())
 
     Endpoints:
-        GET  /ping          - Health check
+        GET  /health        - Health check (status, uptime, components, version)
+        GET  /ping          - Ping health check
         POST /send          - Send a task
         GET  /task/{id}     - Get task status
         POST /cancel/{id}   - Cancel a task
         GET  /agents        - List registered agent cards
         POST /agents        - Register an agent card
     """
-    from fastapi import Body, FastAPI, Response
+    from fastapi import Body, FastAPI, Request, Response
+    from starlette.exceptions import HTTPException as StarletteHTTPException
     from starlette.responses import JSONResponse, StreamingResponse
+
+    # Record server start time on first app build
+    global _server_start_time
+    if _server_start_time is None:
+        _server_start_time = time.time()
 
     if facade is None:
         provider = MemoryProvider("a2a-server")
         task_manager = A2ATaskManager()
         facade = A2AFacade(provider=provider, task_manager=task_manager)
 
-    app = FastAPI(title="AgentMesh A2A Server", version="0.4.0")
+    app = FastAPI(title="AgentMesh A2A Server", version=_get_version())
+
+    # -----------------------------------------------------------------------
+    # Exception handlers — unified error responses
+    # -----------------------------------------------------------------------
+
+    @app.exception_handler(A2AServerError)
+    async def _a2a_server_error_handler(request: Request, exc: A2AServerError):
+        """Handle A2AServerError — our custom exception with string error codes."""
+        logger.warning("A2AServerError [%d] %s: %s", exc.status_code, exc.code, exc.message)
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"error": {"code": exc.code, "message": exc.message}},
+        )
+
+    @app.exception_handler(StarletteHTTPException)
+    async def _http_exception_handler(request: Request, exc: StarletteHTTPException):
+        """Handle Starlette/FastAPI HTTP exceptions (e.g. 405 Method Not Allowed)."""
+        error_code = ERROR_CODE_MAP.get(exc.status_code, "INTERNAL_ERROR")
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"error": {"code": error_code, "message": exc.detail}},
+        )
+
+    @app.exception_handler(Exception)
+    async def _general_exception_handler(request: Request, exc: Exception):
+        """Catch-all handler: logs full traceback, returns safe 500."""
+        logger.exception("Unhandled server error at %s %s", request.method, request.url.path)
+        return JSONResponse(
+            status_code=500,
+            content={"error": {"code": "INTERNAL_ERROR",
+                              "message": "An internal error occurred"}},
+        )
 
     # --- Endpoints ---
+
+    @app.get("/health")
+    async def health():
+        """Health check endpoint.
+
+        Returns server status, uptime, component health, and version.
+        """
+        nonlocal facade
+        comps = {}
+
+        # Server component
+        comps["server"] = "healthy"
+
+        # Provider component — attempt a lightweight ping
+        try:
+            ping_result = facade.provider.ping()
+            provider_ok = ping_result.success
+        except Exception:
+            provider_ok = False
+        comps["provider"] = "healthy" if provider_ok else "unhealthy"
+
+        return {
+            "status": "ok",
+            "uptime": round(time.time() - _server_start_time, 2) if _server_start_time else 0,
+            "components": comps,
+            "version": _get_version(),
+        }
 
     @app.get("/ping")
     async def ping():
@@ -176,7 +325,7 @@ def _build_app(facade: Optional[A2AFacade] = None):
     async def send_task(req: _SendRequest = Body(...)):
         result = facade.send_task(req.task)
         if not result.success:
-            return _json_response(result, status_code=_error_code(result.error, 400))
+            _raise_a2a_error(result, 400, "INVALID_REQUEST")
         return _json_response(result)
 
     def _json_response(result, status_code: int = 200):
@@ -190,18 +339,45 @@ def _build_app(facade: Optional[A2AFacade] = None):
             },
         )
 
+    def _raise_a2a_error(result, default_status: int, default_code: str, *extra_codes: str):
+        """Raise A2AServerError from a failed A2AResult.
+
+        Args:
+            result: The failed A2AResult.
+            default_status: Fallback HTTP status code.
+            default_code: Fallback error code string.
+            extra_codes: More specific codes tried before default.
+        """
+        status = _error_code(result.error, default_status)
+        code = default_code
+        msg = "Unknown error"
+
+        # Try more specific error codes first
+        if result.error:
+            if isinstance(result.error, A2AError):
+                msg = result.error.message
+                # Map internal error codes
+                for ec in (*extra_codes, INTERNAL_TO_ERROR_CODE.get(result.error.code, default_code)):
+                    code = ec
+                    break
+            elif isinstance(result.error, dict):
+                msg = result.error.get("message", msg)
+                code = result.error.get("code", default_code)
+
+        raise A2AServerError(status_code=status, code=code, message=msg)
+
     @app.get("/task/{task_id}")
     async def get_task(task_id: str):
         result = facade.get_task(task_id)
         if not result.success:
-            return _json_response(result, status_code=_error_code(result.error, 404))
+            _raise_a2a_error(result, 404, "NOT_FOUND", "TASK_NOT_FOUND")
         return _json_response(result)
 
     @app.post("/cancel/{task_id}")
     async def cancel_task(task_id: str):
         result = facade.cancel_task(task_id)
         if not result.success:
-            return _json_response(result, status_code=_error_code(result.error, 404))
+            _raise_a2a_error(result, 404, "NOT_FOUND", "TASK_NOT_FOUND")
         return _json_response(result)
 
     @app.get("/stream/{task_id}")
@@ -409,6 +585,28 @@ class HttpProvider(A2AProvider):
         except (urllib.error.URLError, OSError, TimeoutError) as e:
             return {"success": False, "error": {"code": 503, "message": str(e), "recoverable": True}}
 
+    # Map from string error codes (new unified format) to HTTP int codes
+    _STRING_TO_INT_CODE = {
+        "INVALID_REQUEST": 400,
+        "VALIDATION_ERROR": 400,
+        "NOT_FOUND": 404,
+        "TASK_NOT_FOUND": 404,
+        "AGENT_NOT_FOUND": 404,
+        "INTERNAL_ERROR": 500,
+        "PROVIDER_ERROR": 500,
+        "SERVICE_UNAVAILABLE": 503,
+    }
+
+    @staticmethod
+    def _infer_recoverable(int_code: int, resp_code_override: Optional[int] = None) -> bool:
+        """Infer whether an error is recoverable based on HTTP status code.
+
+        5xx errors (server-side) are generally recoverable (retryable).
+        4xx errors (client-side) are generally NOT recoverable.
+        """
+        actual = resp_code_override if resp_code_override is not None else int_code
+        return actual >= 500
+
     def _to_result(self, resp: dict) -> A2AResult:
         success = resp.get("success", False)
         data = resp.get("data")
@@ -417,11 +615,21 @@ class HttpProvider(A2AProvider):
 
         error = None
         if error_raw:
-            error = A2AError(
-                code=error_raw.get("code", 500),
-                message=error_raw.get("message", "Unknown error"),
-                recoverable=error_raw.get("recoverable", False),
-            )
+            code_raw = error_raw.get("code", 500)
+            message = error_raw.get("message", "Unknown error")
+            recoverable = error_raw.get("recoverable", None)
+
+            if isinstance(code_raw, str):
+                int_code = self._STRING_TO_INT_CODE.get(code_raw, 500)
+                # Use explicit recoverable if provided, otherwise infer from status
+                if recoverable is None:
+                    recoverable = self._infer_recoverable(int_code)
+                error = A2AError(code=int_code, message=message, recoverable=recoverable)
+            else:
+                # Old format: int code
+                if recoverable is None:
+                    recoverable = self._infer_recoverable(code_raw)
+                error = A2AError(code=code_raw, message=message, recoverable=recoverable)
 
         return A2AResult(success=success, data=data, error=error, task_state=task_state)
 
