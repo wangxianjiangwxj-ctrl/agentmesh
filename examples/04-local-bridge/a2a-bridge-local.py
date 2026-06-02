@@ -25,12 +25,10 @@ Agent 角色:
 """
 
 import asyncio
-import json
 import time
 import uuid
 from enum import Enum
 from typing import Optional
-
 
 # ═══════════════════════════════════════════════════════════════
 # 1. 核心枚举与类型定义
@@ -280,7 +278,7 @@ class A2AFacade:
             "agentmesh_payload": agentmesh_msg.get("payload", {}),
         }
 
-        print(f"\n  [A2AFacade] AgentMesh msg -> A2A Task 转换完成")
+        print("\n  [A2AFacade] AgentMesh msg -> A2A Task 转换完成")
         print(f"  [A2AFacade] Task ID: {task_id}")
         print(f"  [A2AFacade] From: {task['metadata']['agentmesh_from']}")
         print(f"  [A2AFacade] To:   {task['metadata']['agentmesh_to']}")
@@ -480,7 +478,7 @@ async def main():
     print("=" * 50)
 
     if result["success"]:
-        print(f"  状态:     通过")
+        print("  状态:     通过")
         print(f"  Task ID:  {result['task_id']}")
         print(f"  Provider: {result['provider']}")
         print(f"  最终状态: {result['a2a_task_state']}")
@@ -491,11 +489,11 @@ async def main():
         payload = agentmesh_response.get("payload", {})
         report = payload.get("report", "")
 
-        print(f"\n分析报告:")
+        print("\n分析报告:")
         print(report)
     else:
         error = result.get("error", {})
-        print(f"  状态:     失败")
+        print("  状态:     失败")
         print(f"  错误码:   {error.get('code', 'N/A')}")
         print(f"  错误信息: {error.get('message', 'N/A')}")
         print(f"  可恢复:   {error.get('recoverable', False)}")

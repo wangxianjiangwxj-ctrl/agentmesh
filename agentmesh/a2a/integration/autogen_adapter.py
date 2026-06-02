@@ -21,7 +21,6 @@ Workflow:
 Reference: research/phase13-integration-plan.md -- Task 2
 """
 
-
 from __future__ import annotations
 
 import abc
@@ -42,6 +41,7 @@ MessageMetadata = Dict[str, Any]
 # ---------------------------------------------------------------------------
 # Enums & constants
 # ---------------------------------------------------------------------------
+
 
 class MessageType(str, enum.Enum):
     """Standard message types in AutoGen conversations."""
@@ -68,6 +68,7 @@ class ConversationPhase(str, enum.Enum):
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclasses.dataclass(frozen=True)
 class A2AAgentDef:
@@ -168,6 +169,7 @@ class GroupChatConfig:
 # Protocols (structural typing)
 # ---------------------------------------------------------------------------
 
+
 class ConversableAgentProtocol(Protocol):
     """Protocol describing an AutoGen ConversableAgent-compatible object.
 
@@ -181,6 +183,7 @@ class ConversableAgentProtocol(Protocol):
 # ---------------------------------------------------------------------------
 # Abstract adapter base
 # ---------------------------------------------------------------------------
+
 
 class AutoGenAdapterBase(abc.ABC):
     """Abstract base class for integrating AgentMesh A2A with AutoGen.
@@ -518,6 +521,7 @@ from .crewai_adapter import CardStatus
 # Proxy class (fallback when pyautogen is not installed)
 # ---------------------------------------------------------------------------
 
+
 class _ConversableAgentProxy:
     """AutoGen ConversableAgent-compatible proxy that routes via AgentMesh.
 
@@ -617,16 +621,14 @@ class _ConversableAgentProxy:
             request_reply: If True, auto-reply after receiving.
             silent: If True, suppress logging.
         """
-        sender_name = (
-            getattr(sender, "name", "unknown")
-            if sender is not None
-            else "unknown"
+        sender_name = getattr(sender, "name", "unknown") if sender is not None else "unknown"
+        self._inbox.append(
+            {
+                "sender": sender_name,
+                "message": message,
+                "timestamp": time.monotonic(),
+            }
         )
-        self._inbox.append({
-            "sender": sender_name,
-            "message": message,
-            "timestamp": time.monotonic(),
-        })
 
         if request_reply:
             msg_list = [message] if not isinstance(message, list) else message
@@ -705,6 +707,7 @@ class _ConversableAgentProxy:
 # ---------------------------------------------------------------------------
 # Concrete AutoGen adapter implementation
 # ---------------------------------------------------------------------------
+
 
 class AutoGenAdapter(AutoGenAdapterBase):
     """Concrete AutoGen adapter using HTTP transport to AgentMesh A2A Server.
@@ -793,24 +796,16 @@ class AutoGenAdapter(AutoGenAdapterBase):
                 detail = exc.read().decode("utf-8", errors="replace")
             except Exception:
                 detail = str(exc)
-            raise ValueError(
-                f"HTTP {exc.code} from {method} {url}: {detail}"
-            ) from exc
+            raise ValueError(f"HTTP {exc.code} from {method} {url}: {detail}") from exc
         except urllib.error.URLError as exc:
-            raise ConnectionError(
-                f"Cannot reach {url}: {exc.reason}"
-            ) from exc
+            raise ConnectionError(f"Cannot reach {url}: {exc.reason}") from exc
         except OSError as exc:
-            raise ConnectionError(
-                f"Connection error to {url}: {exc}"
-            ) from exc
+            raise ConnectionError(f"Connection error to {url}: {exc}") from exc
 
     def _ensure_connected(self) -> None:
         """Raise RuntimeError if the adapter is not connected."""
         if not self._connected:
-            raise RuntimeError(
-                "AutoGenAdapter is not connected. Call connect() first."
-            )
+            raise RuntimeError("AutoGenAdapter is not connected. Call connect() first.")
 
     def _parse_message_type(self, value: str) -> MessageType:
         """Safely parse a string into a MessageType enum member."""
@@ -839,10 +834,7 @@ class AutoGenAdapter(AutoGenAdapterBase):
         """
         parsed = urllib.parse.urlparse(server_url)
         if not parsed.scheme or not parsed.netloc:
-            raise ValueError(
-                f"Invalid server_url: '{server_url}'. "
-                f"Expected format: http://host:port"
-            )
+            raise ValueError(f"Invalid server_url: '{server_url}'. Expected format: http://host:port")
 
         host = parsed.hostname or "127.0.0.1"
         port = parsed.port or 8080
@@ -857,9 +849,7 @@ class AutoGenAdapter(AutoGenAdapterBase):
         try:
             self._request("GET", "/health", timeout=min(timeout_seconds, 10.0))
         except (ConnectionError, ValueError, OSError) as exc:
-            raise ConnectionError(
-                f"AgentMesh server at {server_url} is not reachable: {exc}"
-            ) from exc
+            raise ConnectionError(f"AgentMesh server at {server_url} is not reachable: {exc}") from exc
 
         latency = (time.monotonic() - start) * 1000.0
 
@@ -886,7 +876,7 @@ class AutoGenAdapter(AutoGenAdapterBase):
             self._connected = False
             agents = dict(self._agents)
             self._agents.clear()
-            conversations = dict(self._conversations)
+            dict(self._conversations)
             self._conversations.clear()
 
         if was_connected:
@@ -1016,9 +1006,7 @@ class AutoGenAdapter(AutoGenAdapterBase):
         except (ConnectionError, ValueError) as exc:
             with self._lock:
                 self._agents.pop(agent_id, None)
-            raise ConnectionError(
-                f"Failed to register agent '{agent_id}' with server: {exc}"
-            ) from exc
+            raise ConnectionError(f"Failed to register agent '{agent_id}' with server: {exc}") from exc
 
     def unregister_agent(self, agent_id: str) -> None:
         """Remove an AutoGen agent from the AgentMesh server.
@@ -1132,10 +1120,7 @@ class AutoGenAdapter(AutoGenAdapterBase):
         self._ensure_connected()
 
         query_params = urllib.parse.urlencode({"agent_id": agent_id})
-        eff_timeout = (
-            timeout_seconds if timeout_seconds is not None
-            else self._default_timeout
-        )
+        eff_timeout = timeout_seconds if timeout_seconds is not None else self._default_timeout
 
         try:
             response = self._request(
@@ -1194,11 +1179,7 @@ class AutoGenAdapter(AutoGenAdapterBase):
         except (ConnectionError, ValueError, OSError):
             return []
 
-        messages_raw = (
-            response.get("messages", response.get("cards", []))
-            if isinstance(response, dict)
-            else []
-        )
+        messages_raw = response.get("messages", response.get("cards", [])) if isinstance(response, dict) else []
         if not isinstance(messages_raw, list):
             return []
 
@@ -1218,9 +1199,7 @@ class AutoGenAdapter(AutoGenAdapterBase):
         if not response:
             return None
 
-        msg_type_str = response.get(
-            "message_type", response.get("card_type", MessageType.TEXT.value)
-        )
+        msg_type_str = response.get("message_type", response.get("card_type", MessageType.TEXT.value))
         if not isinstance(msg_type_str, str):
             msg_type_str = MessageType.TEXT.value
 
@@ -1229,20 +1208,12 @@ class AutoGenAdapter(AutoGenAdapterBase):
             content_raw = {"text": str(content_raw)}
 
         return MessageReceiveResult(
-            message_id=str(
-                response.get("message_id", response.get("card_id", ""))
-            ),
+            message_id=str(response.get("message_id", response.get("card_id", ""))),
             conversation_id=str(response.get("conversation_id", "")),
-            sender_agent=str(
-                response.get("sender_id", response.get("sender_agent", ""))
-            ),
+            sender_agent=str(response.get("sender_id", response.get("sender_agent", ""))),
             message_type=self._parse_message_type(msg_type_str),
             content=content_raw,
-            metadata=(
-                dict(response["metadata"])
-                if response.get("metadata") is not None
-                else None
-            ),
+            metadata=(dict(response["metadata"]) if response.get("metadata") is not None else None),
         )
 
     # ------------------------------------------------------------------
@@ -1319,17 +1290,10 @@ class AutoGenAdapter(AutoGenAdapterBase):
         }
 
         try:
-            response = self._request(
-                "POST", "/conversations/start", body=body
-            )
-            server_conversation_id = str(
-                response.get("conversation_id", conversation_id)
-            )
+            response = self._request("POST", "/conversations/start", body=body)
+            server_conversation_id = str(response.get("conversation_id", conversation_id))
         except (ConnectionError, ValueError) as exc:
-            raise ConnectionError(
-                f"Failed to start conversation in group "
-                f"'{group_chat_id}': {exc}"
-            ) from exc
+            raise ConnectionError(f"Failed to start conversation in group '{group_chat_id}': {exc}") from exc
 
         with self._lock:
             self._conversations[server_conversation_id] = {
@@ -1363,17 +1327,13 @@ class AutoGenAdapter(AutoGenAdapterBase):
         except (ConnectionError, ValueError):
             with self._lock:
                 meta = self._conversations.get(conversation_id, {})
-                phase_str = meta.get(
-                    "phase", ConversationPhase.ACTIVE.value
-                )
+                phase_str = meta.get("phase", ConversationPhase.ACTIVE.value)
             try:
                 return ConversationPhase(phase_str)
             except ValueError:
                 return ConversationPhase.ACTIVE
 
-        phase_str = response.get(
-            "phase", response.get("status", ConversationPhase.ACTIVE.value)
-        )
+        phase_str = response.get("phase", response.get("status", ConversationPhase.ACTIVE.value))
         try:
             return ConversationPhase(phase_str)
         except ValueError:
@@ -1408,20 +1368,11 @@ class AutoGenAdapter(AutoGenAdapterBase):
             body["since_message_id"] = since_message_id
 
         try:
-            response = self._request(
-                "POST", "/conversations/history", body=body
-            )
+            response = self._request("POST", "/conversations/history", body=body)
         except (ConnectionError, ValueError) as exc:
-            raise ConnectionError(
-                f"Failed to get history for conversation "
-                f"'{conversation_id}': {exc}"
-            ) from exc
+            raise ConnectionError(f"Failed to get history for conversation '{conversation_id}': {exc}") from exc
 
-        messages_raw = (
-            response.get("messages", [])
-            if isinstance(response, dict)
-            else []
-        )
+        messages_raw = response.get("messages", []) if isinstance(response, dict) else []
         if not isinstance(messages_raw, list):
             return []
 
@@ -1469,8 +1420,7 @@ class AutoGenAdapter(AutoGenAdapterBase):
             )
         except (ConnectionError, ValueError) as exc:
             raise ConnectionError(
-                f"Failed to bridge AutoGen agent '{autogen_agent_id}' "
-                f"to CrewAI agent '{crewai_agent_id}': {exc}"
+                f"Failed to bridge AutoGen agent '{autogen_agent_id}' to CrewAI agent '{crewai_agent_id}': {exc}"
             ) from exc
 
     def bridge_to_custom(
@@ -1504,8 +1454,7 @@ class AutoGenAdapter(AutoGenAdapterBase):
             self._request("POST", "/bridge/custom", body=body)
         except (ConnectionError, ValueError) as exc:
             raise ConnectionError(
-                f"Failed to bridge AutoGen agent '{autogen_agent_id}' "
-                f"to custom agent '{custom_agent_id}': {exc}"
+                f"Failed to bridge AutoGen agent '{autogen_agent_id}' to custom agent '{custom_agent_id}': {exc}"
             ) from exc
 
     # ------------------------------------------------------------------
@@ -1549,4 +1498,3 @@ class AutoGenAdapter(AutoGenAdapterBase):
                 "active_conversations": 0,
                 "error": str(exc),
             }
-

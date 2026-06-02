@@ -50,12 +50,14 @@ except ImportError:
 
 class _SendRequest(BaseModel):
     """Request model for POST /send."""
+
     task: dict
     auth: Optional[dict] = None
 
 
 class _AgentCardRequest(BaseModel):
     """Request model for POST /agents."""
+
     name: str
     skills: List[str] = []
     endpoints: Optional[dict] = None
@@ -72,7 +74,6 @@ try:
         A2AProvider,
         A2AResult,
         A2ATaskManager,
-        A2ATaskState,
         MemoryProvider,
     )
 except ImportError:
@@ -92,9 +93,11 @@ except ImportError:
 # HTTP wire format
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class A2ARequest:
     """Request body sent to the A2A server."""
+
     task: dict
     auth: Optional[dict] = None
 
@@ -102,18 +105,21 @@ class A2ARequest:
 @dataclass
 class A2AResponse:
     """Response body from the A2A server."""
+
     success: bool
     data: Any = None
     error: Optional[dict] = None
     task_state: Optional[str] = None
 
     def to_json(self) -> str:
-        return json.dumps({
-            "success": self.success,
-            "data": self.data,
-            "error": self.error,
-            "task_state": self.task_state,
-        })
+        return json.dumps(
+            {
+                "success": self.success,
+                "data": self.data,
+                "error": self.error,
+                "task_state": self.task_state,
+            }
+        )
 
     @classmethod
     def from_json(cls, raw: str) -> "A2AResponse":
@@ -181,10 +187,10 @@ def _build_app(facade: Optional[A2AFacade] = None):
         return JSONResponse(
             status_code=status_code,
             content={
-                "success": result.success if hasattr(result, 'success') else False,
-                "data": result.data if hasattr(result, 'data') else None,
-                "error": _serialize_error(getattr(result, 'error', None)),
-                "task_state": getattr(result, 'task_state', None),
+                "success": result.success if hasattr(result, "success") else False,
+                "data": result.data if hasattr(result, "data") else None,
+                "error": _serialize_error(getattr(result, "error", None)),
+                "task_state": getattr(result, "task_state", None),
             },
         )
 
@@ -215,9 +221,11 @@ def _build_app(facade: Optional[A2AFacade] = None):
         """
         task = facade.get_task(task_id)
         if not task.success:
+
             async def _err_stream() -> AsyncGenerator[bytes, None]:
                 yield _sse_event("error", task)
                 yield _sse_event("done", {"success": False, "data": {"message": "Task not found"}})
+
             return StreamingResponse(_err_stream(), media_type="text/event-stream")
 
         async def _stream() -> AsyncGenerator[bytes, None]:
@@ -247,16 +255,17 @@ def _build_app(facade: Optional[A2AFacade] = None):
                     tasks[task_id]["status"]["state"] = "completed"
                     tasks[task_id]["status"]["message"] = "Task completed successfully"
                     tasks[task_id]["status"]["timestamp"] = time.time()
-                    tasks[task_id].setdefault("result", {})["data"] = {
-                        "output": f"Processed task {task_id}"
-                    }
+                    tasks[task_id].setdefault("result", {})["data"] = {"output": f"Processed task {task_id}"}
                 result = facade.get_task(task_id)
                 yield _sse_event("completed", result)
 
             yield _sse_event("done", {"success": True, "data": {"message": "Stream ended"}})
 
-        return StreamingResponse(_stream(), media_type="text/event-stream",
-                                 headers={"Cache-Control": "no-cache", "Connection": "keep-alive"})
+        return StreamingResponse(
+            _stream(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+        )
 
     @app.get("/agents")
     async def list_agents():
@@ -285,7 +294,7 @@ def _sse_event(event_type: str, data: Any) -> bytes:
                 "data": data.data,
                 "error": _serialize_error(data.error),
                 "task_state": data.task_state,
-            }
+            },
         }
     else:
         payload = {"event": event_type, "data": data}
@@ -382,7 +391,8 @@ class HttpProvider(A2AProvider):
         url = self.base_url + path
         data = json.dumps(body).encode("utf-8")
         req = urllib.request.Request(
-            url, data=data,
+            url,
+            data=data,
             headers={"Content-Type": "application/json"},
             method="POST",
         )
@@ -403,9 +413,15 @@ class HttpProvider(A2AProvider):
             try:
                 return json.loads(body)
             except json.JSONDecodeError:
-                return {"success": False, "error": {"code": e.code, "message": body, "recoverable": True}}
+                return {
+                    "success": False,
+                    "error": {"code": e.code, "message": body, "recoverable": True},
+                }
         except (urllib.error.URLError, OSError, TimeoutError) as e:
-            return {"success": False, "error": {"code": 503, "message": str(e), "recoverable": True}}
+            return {
+                "success": False,
+                "error": {"code": 503, "message": str(e), "recoverable": True},
+            }
 
     def _to_result(self, resp: dict) -> A2AResult:
         success = resp.get("success", False)
@@ -448,11 +464,15 @@ class SSEStream:
     Thread-safe: opens its own HTTP connection on iteration.
     """
 
-    def __init__(self, base_url: str, task_id: str,
-                 max_retries: int = 3,
-                 backoff_factor: float = 1.0,
-                 timeout: int = 30,
-                 heartbeat_timeout: float = 15.0):
+    def __init__(
+        self,
+        base_url: str,
+        task_id: str,
+        max_retries: int = 3,
+        backoff_factor: float = 1.0,
+        timeout: int = 30,
+        heartbeat_timeout: float = 15.0,
+    ):
         """
         Args:
             base_url: Server base URL (e.g. http://localhost:8080)
@@ -475,9 +495,7 @@ class SSEStream:
 
         while retries <= self.max_retries:
             parsed = urllib.parse.urlparse(self.url)
-            conn = http.client.HTTPConnection(
-                parsed.hostname, parsed.port or 80, timeout=self.timeout
-            )
+            conn = http.client.HTTPConnection(parsed.hostname, parsed.port or 80, timeout=self.timeout)
             try:
                 conn.request(
                     "GET",
@@ -505,10 +523,13 @@ class SSEStream:
                         # Heartbeat detection: yield timeout if silent too long
                         idle_time = time.monotonic() - last_activity
                         if idle_time > self.heartbeat_timeout:
-                            yield ("heartbeat_timeout", {
-                                "idle_seconds": idle_time,
-                                "timeout": self.heartbeat_timeout,
-                            })
+                            yield (
+                                "heartbeat_timeout",
+                                {
+                                    "idle_seconds": idle_time,
+                                    "timeout": self.heartbeat_timeout,
+                                },
+                            )
                             return
 
                         # Non-blocking read with heartbeat check
@@ -530,22 +551,33 @@ class SSEStream:
                 # Clean exit — stream ended normally
                 return
 
-            except (http.client.HTTPException, urllib.error.URLError,
-                    ConnectionError, TimeoutError, OSError) as exc:
+            except (
+                http.client.HTTPException,
+                urllib.error.URLError,
+                ConnectionError,
+                TimeoutError,
+                OSError,
+            ) as exc:
                 conn.close()
                 if retries < self.max_retries:
                     retries += 1
-                    yield ("reconnect", {
-                        "attempt": retries,
-                        "max_retries": self.max_retries,
-                        "error": str(exc),
-                    })
+                    yield (
+                        "reconnect",
+                        {
+                            "attempt": retries,
+                            "max_retries": self.max_retries,
+                            "error": str(exc),
+                        },
+                    )
                     _backoff_wait(retries, self.backoff_factor)
                 else:
-                    yield ("error", {
-                        "message": f"SSE connection failed after {retries} retries",
-                        "last_error": str(exc),
-                    })
+                    yield (
+                        "error",
+                        {
+                            "message": f"SSE connection failed after {retries} retries",
+                            "last_error": str(exc),
+                        },
+                    )
                     return
 
     @staticmethod
@@ -626,13 +658,11 @@ def cmd_test(port: int = 8080):
     # Check if server responds
     try:
         req = urllib.request.Request(f"http://localhost:{port}/ping", method="GET")
-        with urllib.request.urlopen(req, timeout=3) as resp:
+        with urllib.request.urlopen(req, timeout=3):
             pass
-        server_running = True
         server_proc = None
         print(f"[*] Server already running on :{port}")
     except Exception:
-        server_running = False
         # Fork a server process
         print(f"[*] Starting server on :{port}...")
         server_proc = subprocess.Popen(
@@ -670,47 +700,63 @@ def _run_test(port: int):
 
     # 1. Ping
     r = client.ping()
-    check("Ping", r.success and r.data and r.data.get("status") == "ok",
-          f"expected ok status, got {r.data}")
+    check(
+        "Ping",
+        r.success and r.data and r.data.get("status") == "ok",
+        f"expected ok status, got {r.data}",
+    )
 
     # 2. Send task
     task = {"id": "test_001", "status": {"state": "submitted"}, "payload": {"text": "hello"}}
     r = client.send_message(task)
-    check("Send task", r.success and r.task_state == "submitted",
-          f"expected submitted, got {r.task_state}")
+    check(
+        "Send task",
+        r.success and r.task_state == "submitted",
+        f"expected submitted, got {r.task_state}",
+    )
 
     # 3. Get task
     r = client.get_task("test_001")
-    check("Get task", r.success and r.data and r.data["id"] == "test_001",
-          f"expected task test_001, got {r.data}")
+    check(
+        "Get task",
+        r.success and r.data and r.data["id"] == "test_001",
+        f"expected task test_001, got {r.data}",
+    )
 
     # 4. Cancel task
     r = client.cancel_task("test_001")
-    check("Cancel task", r.success and r.task_state == "canceled",
-          f"expected canceled, got {r.task_state}")
+    check(
+        "Cancel task",
+        r.success and r.task_state == "canceled",
+        f"expected canceled, got {r.task_state}",
+    )
 
     # 5. Get nonexistent task → 404
     r = client.get_task("nonexistent")
-    check("Get nonexistent → 404", not r.success and r.error and r.error.code == 404,
-          f"expected 404, got {r.error}")
+    check(
+        "Get nonexistent → 404",
+        not r.success and r.error and r.error.code == 404,
+        f"expected 404, got {r.error}",
+    )
 
     # 6. Register agent via HttpProvider
     r = client.register_agent("test-agent", ["test", "demo"])
-    check("Register agent", r.success,
-          f"expected success, got {r.error}")
+    check("Register agent", r.success, f"expected success, got {r.error}")
 
     # 7. Send then get lifecycle
     task2 = {"id": "test_002", "status": {"state": "submitted"}, "payload": {"text": "world"}}
     r1 = client.send_message(task2)
     r2 = client.get_task("test_002")
-    check("Full lifecycle (send→get)", r1.success and r2.success,
-          f"send={r1.success} get={r2.success}")
+    check(
+        "Full lifecycle (send→get)",
+        r1.success and r2.success,
+        f"send={r1.success} get={r2.success}",
+    )
 
     # 8. Empty task id → error
     bad_task = {"id": "", "status": {"state": "submitted"}, "payload": {}}
     r = client.send_message(bad_task)
-    check("Empty task id → error", not r.success,
-          "expected failure for empty id, got success")
+    check("Empty task id → error", not r.success, "expected failure for empty id, got success")
 
     print(f"\n=== Results: {passed}/{passed + failed} passed ===")
 

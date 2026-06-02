@@ -246,9 +246,7 @@ def _validate_hex(
     if allow_empty and not value:
         return
     if len(value) != expected_len:
-        raise ValueError(
-            f"{field_name} must be {expected_len} hex chars, got {len(value)!r}"
-        )
+        raise ValueError(f"{field_name} must be {expected_len} hex chars, got {len(value)!r}")
     try:
         int(value, 16)
     except ValueError:

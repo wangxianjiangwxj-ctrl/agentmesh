@@ -7,16 +7,18 @@ AgentMesh + CrewAI 集成示例
 """
 
 try:
-    from crewai import Agent, Task, Crew, Process
+    from crewai import Agent, Crew, Process, Task
     CREWAI_AVAILABLE = True
 except ImportError:
     CREWAI_AVAILABLE = False
     print("⚠️  CrewAI未安装。运行: pip install crewai")
 
-import sys, os
+import os
+import sys
+
 # SDK路径：pip install agentmesh-sdk 后可移除以下两行
 sys.path.insert(0, os.path.expanduser('~/.openclaw/skills/agentmesh-protocol/'))
-from agentmesh_sdk import FidelityTracker, ContributionAllocator
+from agentmesh_sdk import ContributionAllocator, FidelityTracker
 
 
 def run_demo():

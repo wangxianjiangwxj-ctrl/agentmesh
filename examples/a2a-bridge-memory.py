@@ -11,15 +11,21 @@ AgentMesh A2A Bridge — MemoryProvider 两Agent通信示例
   python3 a2a-bridge-memory.py
 """
 
-import sys, os, json, uuid
-from datetime import datetime, timezone
+import json
+import os
+import sys
+import uuid
 
 # SDK路径：从 examples/ 到 agentmesh/
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'agentmesh'))
 
 from a2a_provider import (
-    A2AProvider, MemoryProvider, A2AFacade,
-    A2ATaskManager, A2ATaskState, A2AResult, A2AError,
+    A2AError,
+    A2AFacade,
+    A2AResult,
+    A2ATaskManager,
+    A2ATaskState,
+    MemoryProvider,
 )
 
 # AgentMesh SDK — 保真度追踪
@@ -289,7 +295,7 @@ def main():
     facade.send_task(request_task["params"])
     # 手动更新为 WORKING 以演示状态机流转
     task_manager.update_state(task_id, A2ATaskState.WORKING)
-    print(f"  状态机更新: SUBMITTED -> WORKING")
+    print("  状态机更新: SUBMITTED -> WORKING")
     print()
 
     # 保真度追踪 — Step 1
@@ -321,7 +327,7 @@ def main():
     # 状态机更新
     task_manager.update_state(task_id, A2ATaskState.COMPLETED)
     t = task_manager.get_task(task_id)
-    print(f"  状态机更新: WORKING -> COMPLETED")
+    print("  状态机更新: WORKING -> COMPLETED")
     print(f"  最终状态   : {t['state']}")
     print()
 

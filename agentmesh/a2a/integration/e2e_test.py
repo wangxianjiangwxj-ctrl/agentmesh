@@ -48,6 +48,7 @@ MessagePayload = Dict[str, Any]
 # Enums & constants
 # ---------------------------------------------------------------------------
 
+
 class FrameworkType(str, enum.Enum):
     """Agent framework types in the integration test matrix."""
 
@@ -68,6 +69,7 @@ class TestResult(str, enum.Enum):
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclasses.dataclass(frozen=True)
 class TestScenario:
@@ -205,6 +207,7 @@ DEFAULT_MATRIX = IntegrationTestMatrix(
 # ---------------------------------------------------------------------------
 # Abstract test runner
 # ---------------------------------------------------------------------------
+
 
 class IntegrationTestRunner(abc.ABC):
     """Abstract base for integration test execution.
@@ -424,7 +427,15 @@ class IntegrationTestRunner(abc.ABC):
               - "details": List[Dict] per scenario
         """
         if not self._results:
-            return {"total": 0, "passed": 0, "failed": 0, "skipped": 0, "blocked": 0, "duration_seconds": 0.0, "details": []}
+            return {
+                "total": 0,
+                "passed": 0,
+                "failed": 0,
+                "skipped": 0,
+                "blocked": 0,
+                "duration_seconds": 0.0,
+                "details": [],
+            }
 
         total = len(self._results)
         passed = sum(1 for r in self._results if r.result == TestResult.PASSED)
@@ -455,6 +466,7 @@ class IntegrationTestRunner(abc.ABC):
 # ---------------------------------------------------------------------------
 # Standalone entry point
 # ---------------------------------------------------------------------------
+
 
 def run_verification_matrix(
     runner_class: Optional[type] = None,
@@ -491,7 +503,7 @@ def run_verification_matrix(
 
     runner = runner_class(matrix=matrix)
     print(f"Running {len(runner.matrix.scenarios)} integration scenarios...")
-    results = runner.run_all()
+    runner.run_all()
     report = runner.summary_report()
 
     print()

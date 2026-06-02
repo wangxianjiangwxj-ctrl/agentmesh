@@ -1,23 +1,28 @@
 target-version = "py310"
-line-length = 100
+line-length = 120
 
 [lint]
-# Start with recommended rules, gradually expand
+# Phase 1 baseline: core rules (PEP 8 + pyflakes + whitespace + import sorting)
+# More advanced rules (UP, B, SIM, PL) to be added in Phase 2
 select = [
-    "F",   # pyflakes (errors)
     "E",   # pycodestyle errors
+    "F",   # pyflakes (errors)
     "W",   # pycodestyle warnings
     "I",   # isort (import sorting)
 ]
 
-# Ignore for now - too noisy to fix upfront
+# Known issues, deferred to later phases
 ignore = [
-    "E501",  # line too long (we have line-length = 100)
+    "E501",  # line too long (handled by formatter)
+    "E402",  # module-import-not-at-top-of-file: adapter files use conditional imports pattern
 ]
 
 [lint.per-file-ignores]
-"tests/**" = ["T20"]
+"tests/**" = ["F401", "F841", "E741"]
+"examples/**" = ["F401", "F841"]
 
 [format]
 quote-style = "double"
 indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"

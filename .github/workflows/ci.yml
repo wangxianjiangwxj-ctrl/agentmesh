@@ -29,6 +29,9 @@ jobs:
       - name: Lint with ruff
         run: ruff check agentmesh/ tests/ examples/
 
+      - name: Check formatting with ruff
+        run: ruff format --check agentmesh/ tests/ examples/
+
       - name: Type check with mypy
         run: mypy agentmesh/ --ignore-missing-imports || true
 

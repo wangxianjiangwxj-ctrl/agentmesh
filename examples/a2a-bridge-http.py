@@ -16,15 +16,22 @@ AgentMesh A2A Bridge — HTTP 远程 A2A Server 通信示例
   python3 a2a-bridge-http.py --server-url http://localhost:8080
 """
 
-import sys, os, json, uuid, time, threading
+import json
+import os
+import sys
+import threading
+import time
+import uuid
 from datetime import datetime, timezone
 
 # SDK路径
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'agentmesh'))
 
 from a2a_provider import (
-    A2AProvider, MemoryProvider, A2AFacade,
-    A2ATaskManager, A2ATaskState, A2AResult, A2AError,
+    A2AResult,
+    A2ATaskManager,
+    A2ATaskState,
+    MemoryProvider,
 )
 
 # AgentMesh SDK — 保真度追踪
@@ -198,7 +205,7 @@ class A2AHTTPServer:
 
     def start(self):
         """启动 HTTP Server（阻塞）"""
-        from http.server import HTTPServer, BaseHTTPRequestHandler
+        from http.server import BaseHTTPRequestHandler, HTTPServer
 
         server_self = self
 
@@ -233,7 +240,7 @@ class A2AHTTPServer:
 
     def start_background(self) -> threading.Thread:
         """在后台线程中启动 Server"""
-        from http.server import HTTPServer, BaseHTTPRequestHandler
+        from http.server import BaseHTTPRequestHandler, HTTPServer
 
         server_self = self
 
@@ -419,7 +426,7 @@ def main():
     server_url = f"http://{server.host}:{server.port}/a2a"
     print(f"  Server URL : {server_url}")
     print(f"  Agent Name : {server.name}")
-    print(f"  Methods    : tasks.send, tasks.get, tasks.cancel")
+    print("  Methods    : tasks.send, tasks.get, tasks.cancel")
     print()
 
     # ---- 4b. 创建 HTTP Client ----
@@ -447,9 +454,9 @@ def main():
     print("[Step 1] HTTP POST — tasks.send")
     print(f"  Task ID     : {task_id}")
     print(f"  请求方法    : POST {server_url}")
-    print(f"  协议        : JSON-RPC 2.0")
-    print(f"  发送者      : bot-alpha")
-    print(f"  初始保真度  : 1.0")
+    print("  协议        : JSON-RPC 2.0")
+    print("  发送者      : bot-alpha")
+    print("  初始保真度  : 1.0")
     print(f"  请求内容    : {request_text[:60]}...")
     print()
 
@@ -490,7 +497,7 @@ def main():
         print(f"  回复者      : {meta.get('agentmesh_sender', 'unknown')}")
         print(f"  保真度      : {meta.get('agentmesh_fidelity', 'N/A')}")
         print(f"  置信度      : {meta.get('agentmesh_confidence', 'N/A')}")
-        print(f"  响应内容:")
+        print("  响应内容:")
         for line in msg["parts"][0]["text"].strip().split("\n"):
             print(f"    {line}")
     print()
@@ -510,7 +517,7 @@ def main():
             last_fid = fidelity_chain[-1]["fidelity"]
             tracker.add_step("a2a-server-01", last_fid, "HTTP Server处理并响应")
             print()
-            print(f"  AgentMesh FidelityTracker:")
+            print("  AgentMesh FidelityTracker:")
             print(f"    累积保真度: {tracker.cumulative_fidelity:.4f}")
             print(f"    警告触发  : {tracker.warning_triggered}")
     else:
@@ -533,7 +540,7 @@ def main():
     if "error" not in get_resp:
         get_result = get_resp.get("result", {})
         print(f"  GET task {task_id}: 状态 = {get_result.get('status', {}).get('state', 'unknown')}")
-        print(f"  任务存在: 是")
+        print("  任务存在: 是")
     else:
         print(f"  GET task {task_id}: 错误 = {get_resp['error']}")
     print()
