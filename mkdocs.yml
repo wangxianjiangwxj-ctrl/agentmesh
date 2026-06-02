@@ -24,6 +24,9 @@ nav:
   - 两Agent研究协作: examples/01-two-agent-research.md
   - 三Agent代码审查: examples/02-three-agent-review.md
   - 跨A2A协作: examples/03-cross-a2a-collaboration.md
+  - 本地Agent A2A桥接: examples/04-local-bridge.md
+  - 远程A2A服务连接: examples/05-remote-a2a-server.md
+  - CLI Serve/Connect 工作流: examples/06-cli-workflow.md
 - CLI: cli.md
 - 路线图: roadmap.md
 plugins:
