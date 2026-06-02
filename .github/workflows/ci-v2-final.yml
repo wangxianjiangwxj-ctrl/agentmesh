@@ -80,8 +80,8 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - name: Install mkdocs
-        run: pip install mkdocs mkdocs-material mkdocs-macros-plugin
+      - name: Install mkdocs + plugins
+        run: pip install mkdocs mkdocs-material mkdocs-macros-plugin mkdocstrings[python] mkdocs-gen-files
       - name: Build docs
         run: mkdocs build --strict
 
@@ -96,8 +96,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install mkdocs
-        run: pip install mkdocs mkdocs-material mkdocs-macros-plugin
+      - name: Install mkdocs + plugins
+        run: pip install mkdocs mkdocs-material mkdocs-macros-plugin mkdocstrings[python] mkdocs-gen-files
       - name: Build docs
         run: mkdocs build --strict
       - name: Deploy to GitHub Pages
