@@ -29,12 +29,10 @@ from __future__ import annotations
 import abc
 import dataclasses
 import enum
-import json
 import sys
 import time
 import traceback
 from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar
-
 
 # ---------------------------------------------------------------------------
 # Type aliases

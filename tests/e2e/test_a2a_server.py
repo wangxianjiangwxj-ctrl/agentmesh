@@ -29,13 +29,12 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 try:
-    from agentmesh.a2a_server import HttpProvider
     from agentmesh.a2a_provider import A2AError
+    from agentmesh.a2a_server import HttpProvider
 except ImportError:
     # Not installed; insert repo root
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
     from agentmesh.a2a_server import HttpProvider
-    from agentmesh.a2a_provider import A2AError
 
 
 # ---------------------------------------------------------------------------
@@ -52,8 +51,8 @@ SERVER_URL = f"http://localhost:{SERVER_PORT}"
 
 def _server_proc():
     """Start server, yield (proc, url), terminate on cleanup."""
-    import urllib.request
     import urllib.error
+    import urllib.request
 
     # Check if already running
     try:
@@ -154,7 +153,7 @@ class TestA2AServerProtocol(unittest.TestCase):
     def test_send_get_cancel_lifecycle(self):
         """Complete task lifecycle: send → get → cancel → verify."""
         task = {"id": "ut_lifecycle_01", "status": {"state": "submitted"}, "payload": {"text": "lifecycle"}}
-        
+
         r1 = self.client.send_message(task)
         self.assertTrue(r1.success)
         self.assertEqual(r1.task_state, "submitted")

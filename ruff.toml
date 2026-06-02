@@ -1,0 +1,23 @@
+target-version = "py310"
+line-length = 100
+
+[lint]
+# Start with recommended rules, gradually expand
+select = [
+    "F",   # pyflakes (errors)
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "I",   # isort (import sorting)
+]
+
+# Ignore for now - too noisy to fix upfront
+ignore = [
+    "E501",  # line too long (we have line-length = 100)
+]
+
+[lint.per-file-ignores]
+"tests/**" = ["T20"]
+
+[format]
+quote-style = "double"
+indent-style = "space"

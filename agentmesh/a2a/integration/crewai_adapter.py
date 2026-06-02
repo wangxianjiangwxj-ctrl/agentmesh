@@ -28,7 +28,6 @@ import dataclasses
 import enum
 from typing import Any, Dict, List, Optional, Protocol, TypeVar
 
-
 # ---------------------------------------------------------------------------
 # Type aliases
 # ---------------------------------------------------------------------------
@@ -435,11 +434,10 @@ class CrewAIAdapterBase(abc.ABC):
 import json
 import threading
 import time
-import uuid
 import urllib.error
 import urllib.parse
 import urllib.request
-
+import uuid
 
 # ---------------------------------------------------------------------------
 # Proxy classes (fallback when crewai package is not installed)
@@ -782,7 +780,7 @@ class CrewAIAdapter(CrewAIAdapterBase):
         # Create or retrieve the A2ATool
         tool_def = A2AToolDef(
             name=config.agentmesh_tool_name,
-            description=f"Send a card through AgentMesh to another agent",
+            description="Send a card through AgentMesh to another agent",
             card_type=CardType.TEXT,
         )
         tool = self.create_a2a_tool(tool_def)

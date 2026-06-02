@@ -20,22 +20,21 @@ import unittest
 from typing import Optional
 from unittest import mock
 
-
 # ---------------------------------------------------------------------------
 # Import guard
 # ---------------------------------------------------------------------------
 
 try:
     from agentmesh.a2a.integration import (
-        AutoGenAdapterBase,
         A2AAgentDef,
+        AutoGenAdapterBase,
         AutoGenAgentConfig,
-        GroupChatConfig,
-        MessageType,
         CardStatus,
-        MessageSendResult,
-        MessageReceiveResult,
         ConversationPhase,
+        GroupChatConfig,
+        MessageReceiveResult,
+        MessageSendResult,
+        MessageType,
     )
     HAS_ADAPTER = True
 except ImportError:

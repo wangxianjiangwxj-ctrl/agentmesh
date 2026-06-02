@@ -25,12 +25,11 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 try:
-    from agentmesh.a2a_server import HttpProvider
     from agentmesh.a2a_provider import A2AError
+    from agentmesh.a2a_server import HttpProvider
 except ImportError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
     from agentmesh.a2a_server import HttpProvider
-    from agentmesh.a2a_provider import A2AError
 
 
 # ---------------------------------------------------------------------------

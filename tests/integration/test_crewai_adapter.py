@@ -20,7 +20,6 @@ import unittest
 from typing import Optional
 from unittest import mock
 
-
 # ---------------------------------------------------------------------------
 # Import guard: the integration package should always be importable
 # (stdlib only).  The concrete CrewAI package is NOT required at import
@@ -29,13 +28,13 @@ from unittest import mock
 
 try:
     from agentmesh.a2a.integration import (
-        CrewAIAdapterBase,
         A2AToolDef,
-        CrewAIAgentConfig,
-        CardType,
-        CardStatus,
-        CardSendResult,
         CardReceiveResult,
+        CardSendResult,
+        CardStatus,
+        CardType,
+        CrewAIAdapterBase,
+        CrewAIAgentConfig,
     )
     HAS_ADAPTER = True
 except ImportError:

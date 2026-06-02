@@ -27,7 +27,7 @@ jobs:
           pip install ruff mypy pytest mkdocs
 
       - name: Lint with ruff
-        run: ruff check agentmesh/ examples/ || true
+        run: ruff check agentmesh/ tests/ examples/
 
       - name: Type check with mypy
         run: mypy agentmesh/ --ignore-missing-imports || true

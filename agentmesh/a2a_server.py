@@ -37,9 +37,8 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, AsyncGenerator, List, Optional
-
 
 # pydantic models for API — defined at module level for Python 3.9 compat
 try:
@@ -85,7 +84,6 @@ except ImportError:
         A2AProvider,
         A2AResult,
         A2ATaskManager,
-        A2ATaskState,
         MemoryProvider,
     )
 
@@ -150,7 +148,7 @@ def _build_app(facade: Optional[A2AFacade] = None):
         GET  /agents        - List registered agent cards
         POST /agents        - Register an agent card
     """
-    from fastapi import Body, FastAPI, Response
+    from fastapi import Body, FastAPI
     from starlette.responses import JSONResponse, StreamingResponse
 
     if facade is None:
@@ -712,7 +710,7 @@ def _run_test(port: int):
     bad_task = {"id": "", "status": {"state": "submitted"}, "payload": {}}
     r = client.send_message(bad_task)
     check("Empty task id → error", not r.success,
-          f"expected failure for empty id, got success")
+          "expected failure for empty id, got success")
 
     print(f"\n=== Results: {passed}/{passed + failed} passed ===")
 

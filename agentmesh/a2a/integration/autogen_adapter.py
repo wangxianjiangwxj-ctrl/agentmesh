@@ -29,7 +29,6 @@ import dataclasses
 import enum
 from typing import Any, Dict, List, Optional, Protocol, TypeVar
 
-
 # ---------------------------------------------------------------------------
 # Type aliases
 # ---------------------------------------------------------------------------
@@ -504,19 +503,16 @@ class AutoGenAdapterBase(abc.ABC):
 import json
 import threading
 import time
-import uuid
 import urllib.error
 import urllib.parse
 import urllib.request
-
+import uuid
 
 # ---------------------------------------------------------------------------
 # CardStatus is needed at runtime for MessageSendResult construction.
 # It is re-exported from ``__init__.py`` via ``crewai_adapter``.
 # ---------------------------------------------------------------------------
-
 from .crewai_adapter import CardStatus
-
 
 # ---------------------------------------------------------------------------
 # Proxy class (fallback when pyautogen is not installed)

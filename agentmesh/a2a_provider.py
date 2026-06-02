@@ -279,10 +279,10 @@ if __name__ == "__main__":
     task = {"id": "task_001", "status": {"state": "submitted"}, "payload": {}}
     r = mem.send_message(task)
     assert r.success and r.task_state == "submitted"
-    
+
     r = mem.get_task("task_001")
     assert r.success and r.data["id"] == "task_001"
-    
+
     r = mem.cancel_task("task_001")
     assert r.success and r.task_state == "canceled"
     print("  ✅ Send → Get → Cancel 完整生命周期")
@@ -296,7 +296,7 @@ if __name__ == "__main__":
     mgr.update_state("task_001", A2ATaskState.WORKING)
     mgr.update_state("task_001", A2ATaskState.COMPLETED)
     assert mgr.get_task("task_001")["state"] == A2ATaskState.COMPLETED
-    
+
     # 非法转换
     try:
         mgr.update_state("task_001", A2ATaskState.WORKING)
@@ -322,10 +322,10 @@ if __name__ == "__main__":
     task = {"id": "facade_001", "status": {"state": "submitted"}}
     r = facade.send_task(task)
     assert r.success
-    
+
     r = facade.get_task("facade_001")
     assert r.success
-    
+
     r = facade.cancel_task("facade_001")
     assert r.success
     print("  ✅ Facade统一入口正常工作")
