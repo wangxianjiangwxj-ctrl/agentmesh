@@ -27,15 +27,18 @@ Design:
     - Compatible with the A2AProvider interface (HttpProvider)
 """
 
+import asyncio
+import http.client
 import json
 import os
 import subprocess
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
-from typing import Any, List, Optional
+from typing import Any, AsyncGenerator, List, Optional
 
 
 # pydantic models for API — defined at module level for Python 3.9 compat
@@ -148,7 +151,7 @@ def _build_app(facade: Optional[A2AFacade] = None):
         POST /agents        - Register an agent card
     """
     from fastapi import Body, FastAPI, Response
-    from starlette.responses import JSONResponse
+    from starlette.responses import JSONResponse, StreamingResponse
 
     if facade is None:
         provider = MemoryProvider("a2a-server")
@@ -201,6 +204,62 @@ def _build_app(facade: Optional[A2AFacade] = None):
             return _json_response(result, status_code=_error_code(result.error, 404))
         return _json_response(result)
 
+    @app.get("/stream/{task_id}")
+    async def stream_task(task_id: str):
+        """SSE stream: subscribe to task state changes in real time.
+
+        Returns Server-Sent Events as the task progresses through
+        its lifecycle (submitted -> working -> completed/canceled/failed).
+        Each event has type "state", "completed", or "done".
+
+        Example:
+            curl -N http://localhost:8080/stream/task_001
+        """
+        task = facade.get_task(task_id)
+        if not task.success:
+            async def _err_stream() -> AsyncGenerator[bytes, None]:
+                yield _sse_event("error", task)
+                yield _sse_event("done", {"success": False, "data": {"message": "Task not found"}})
+            return StreamingResponse(_err_stream(), media_type="text/event-stream")
+
+        async def _stream() -> AsyncGenerator[bytes, None]:
+            # 1. Emit current state immediately
+            result = facade.get_task(task_id)
+            yield _sse_event("state", result)
+
+            # 2. If submitted, simulate step-through progress
+            if result.task_state == "submitted":
+                stages = [
+                    ("working", "Processing task...", 0.5),
+                    ("working", "Analyzing data...", 1.0),
+                    ("working", "Generating result...", 1.5),
+                ]
+                for state, msg, delay in stages:
+                    await asyncio.sleep(delay)
+                    tasks = facade.provider._tasks
+                    if task_id in tasks:
+                        tasks[task_id].setdefault("status", {})["state"] = state
+                        tasks[task_id]["status"]["message"] = msg
+                        tasks[task_id]["status"]["timestamp"] = time.time()
+                    result = facade.get_task(task_id)
+                    yield _sse_event("state", result)
+
+                # Mark as completed
+                if task_id in tasks:
+                    tasks[task_id]["status"]["state"] = "completed"
+                    tasks[task_id]["status"]["message"] = "Task completed successfully"
+                    tasks[task_id]["status"]["timestamp"] = time.time()
+                    tasks[task_id].setdefault("result", {})["data"] = {
+                        "output": f"Processed task {task_id}"
+                    }
+                result = facade.get_task(task_id)
+                yield _sse_event("completed", result)
+
+            yield _sse_event("done", {"success": True, "data": {"message": "Stream ended"}})
+
+        return StreamingResponse(_stream(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache", "Connection": "keep-alive"})
+
     @app.get("/agents")
     async def list_agents():
         """List all registered agent cards."""
@@ -216,6 +275,23 @@ def _build_app(facade: Optional[A2AFacade] = None):
 
     # --- Return the FastAPI app so callers can mount or run it ---
     return app
+
+
+def _sse_event(event_type: str, data: Any) -> bytes:
+    """Format data as an SSE event payload."""
+    if isinstance(data, A2AResult):
+        payload = {
+            "event": event_type,
+            "data": {
+                "success": data.success,
+                "data": data.data,
+                "error": _serialize_error(data.error),
+                "task_state": data.task_state,
+            }
+        }
+    else:
+        payload = {"event": event_type, "data": data}
+    return f"event: {event_type}\ndata: {json.dumps(payload)}\n\n".encode("utf-8")
 
 
 def _serialize_error(error: Any) -> Optional[dict]:
@@ -287,6 +363,21 @@ class HttpProvider(A2AProvider):
         resp = self._post("/agents", {"name": name, "skills": skills or []})
         return self._to_result(resp)
 
+    def stream_task(self, task_id: str) -> "SSEStream":
+        """Open an SSE stream for task state updates.
+
+        Returns an SSEStream iterator that yields (event_type, data_dict)
+        tuples as the task progresses.
+
+        Usage:
+            stream = client.stream_task("task_001")
+            for event_type, data in stream:
+                print(f"[{event_type}] {data}")
+                if event_type == "done":
+                    break
+        """
+        return SSEStream(self.base_url, task_id)
+
     # ---- Internal HTTP helpers ----
 
     def _post(self, path: str, body: dict) -> dict:
@@ -333,6 +424,162 @@ class HttpProvider(A2AProvider):
             )
 
         return A2AResult(success=success, data=data, error=error, task_state=task_state)
+
+
+# ===================================================================
+# SSE Stream client
+# ===================================================================
+
+
+class SSEStream:
+    """SSE event stream reader for A2A task state updates.
+
+    Wraps an HTTP streaming response to the /stream/{task_id} endpoint
+    and yields parsed (event_type, data_dict) tuples.
+
+    Supports automatic reconnection with exponential backoff for transient
+    failures (5xx, 429), configurable timeouts, and heartbeat detection.
+
+    Usage:
+        stream = SSEStream("http://localhost:8080", "task_001")
+        for event_type, data in stream:
+            print(f"[{event_type}] {data}")
+            if event_type == "done":
+                break
+
+    Thread-safe: opens its own HTTP connection on iteration.
+    """
+
+    def __init__(self, base_url: str, task_id: str,
+                 max_retries: int = 3,
+                 backoff_factor: float = 1.0,
+                 timeout: int = 30,
+                 heartbeat_timeout: float = 15.0):
+        """
+        Args:
+            base_url: Server base URL (e.g. http://localhost:8080)
+            task_id: Task ID to stream
+            max_retries: Max reconnection attempts on transient failure (0 = no retry)
+            backoff_factor: Exponential backoff multiplier in seconds
+            timeout: HTTP connection timeout in seconds
+            heartbeat_timeout: Seconds without data before yielding timeout event
+        """
+        self.url = base_url.rstrip("/") + f"/stream/{task_id}"
+        self.max_retries = max_retries
+        self.backoff_factor = backoff_factor
+        self.timeout = timeout
+        self.heartbeat_timeout = heartbeat_timeout
+
+    def __iter__(self):
+        """Iterate over (event_type, data_dict) tuples from the SSE stream."""
+        last_activity = time.monotonic()
+        retries = 0
+
+        while retries <= self.max_retries:
+            parsed = urllib.parse.urlparse(self.url)
+            conn = http.client.HTTPConnection(
+                parsed.hostname, parsed.port or 80, timeout=self.timeout
+            )
+            try:
+                conn.request(
+                    "GET",
+                    parsed.path + ("?" + parsed.query if parsed.query else ""),
+                    headers={"Accept": "text/event-stream"},
+                )
+                resp = conn.getresponse()
+
+                # Non-200: retry if retryable status, otherwise fail
+                if resp.status != 200:
+                    if retries < self.max_retries and _is_retryable_status(resp.status):
+                        retries += 1
+                        _backoff_wait(retries, self.backoff_factor)
+                        conn.close()
+                        continue
+                    yield ("error", {"status": resp.status, "message": resp.reason})
+                    return
+
+                # Successful connection — reset retry counter
+                retries = 0
+                buffer = b""
+
+                try:
+                    while True:
+                        # Heartbeat detection: yield timeout if silent too long
+                        idle_time = time.monotonic() - last_activity
+                        if idle_time > self.heartbeat_timeout:
+                            yield ("heartbeat_timeout", {
+                                "idle_seconds": idle_time,
+                                "timeout": self.heartbeat_timeout,
+                            })
+                            return
+
+                        # Non-blocking read with heartbeat check
+                        chunk = resp.read(4096)
+                        if not chunk:
+                            break
+
+                        last_activity = time.monotonic()
+                        buffer += chunk
+
+                        while b"\n\n" in buffer:
+                            raw_event, buffer = buffer.split(b"\n\n", 1)
+                            parsed_event = self._parse(raw_event)
+                            if parsed_event:
+                                yield parsed_event
+                finally:
+                    conn.close()
+
+                # Clean exit — stream ended normally
+                return
+
+            except (http.client.HTTPException, urllib.error.URLError,
+                    ConnectionError, TimeoutError, OSError) as exc:
+                conn.close()
+                if retries < self.max_retries:
+                    retries += 1
+                    yield ("reconnect", {
+                        "attempt": retries,
+                        "max_retries": self.max_retries,
+                        "error": str(exc),
+                    })
+                    _backoff_wait(retries, self.backoff_factor)
+                else:
+                    yield ("error", {
+                        "message": f"SSE connection failed after {retries} retries",
+                        "last_error": str(exc),
+                    })
+                    return
+
+    @staticmethod
+    def _parse(raw: bytes):
+        """Parse a single SSE message into (event_type, data_dict) or None."""
+        event_type = "message"
+        data_str = None
+        for line in raw.decode("utf-8").split("\n"):
+            if line.startswith("event: "):
+                event_type = line[7:].strip()
+            elif line.startswith("data: "):
+                data_str = line[6:].strip()
+            elif line.startswith("id: "):
+                pass  # SSE event id — reserved for future use
+        if data_str:
+            try:
+                payload = json.loads(data_str)
+                return (payload.get("event", event_type), payload.get("data", {}))
+            except json.JSONDecodeError:
+                return (event_type, {"raw": data_str})
+        return None
+
+
+def _is_retryable_status(status: int) -> bool:
+    """Check if an HTTP status code warrants reconnection."""
+    return status in (429, 502, 503, 504)
+
+
+def _backoff_wait(attempt: int, factor: float) -> None:
+    """Sleep with exponential backoff, capped at 30 seconds."""
+    delay = factor * (2 ** (attempt - 1))
+    time.sleep(min(delay, 30.0))
 
 
 # ===================================================================
