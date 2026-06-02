@@ -42,6 +42,17 @@ class A2AError(Exception):
         super().__init__(f"[{code}] {message}")
 
 
+class ProviderError(A2AError):
+    """Provider-level error (e.g. network, config, upstream failure).
+
+    Raised by provider implementations when an external dependency fails.
+    Maps to HTTP 500 by default, or a provider-specific status code.
+    """
+    def __init__(self, code: int = 500, message: str = "Provider error",
+                 recoverable: bool = True):
+        super().__init__(code, message, recoverable)
+
+
 # ============================================================
 # A2A Task State Machine
 # ============================================================
