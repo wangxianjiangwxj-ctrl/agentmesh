@@ -30,19 +30,21 @@ Design:
 import asyncio
 import http.client
 import json
-import logging
 import os
 import subprocess
 import sys
 import time
+import uuid
 import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 from typing import Any, AsyncGenerator, List, Optional
 
+from agentmesh.a2a import StructuredLogger, with_trace_context, TraceProvider
 
-logger = logging.getLogger(__name__)
+
+log = StructuredLogger("a2a-server")
 
 
 # Server start time (set when _build_app() first creates an app)
@@ -234,7 +236,7 @@ def _build_app(facade: Optional[A2AFacade] = None):
         GET  /agents        - List registered agent cards
         POST /agents        - Register an agent card
     """
-    from fastapi import Body, FastAPI, Request, Response
+    from fastapi import Body, FastAPI, Request
     from starlette.exceptions import HTTPException as StarletteHTTPException
     from starlette.responses import JSONResponse, StreamingResponse
 
@@ -251,13 +253,40 @@ def _build_app(facade: Optional[A2AFacade] = None):
     app = FastAPI(title="AgentMesh A2A Server", version=_get_version())
 
     # -----------------------------------------------------------------------
+    # Request tracing middleware — inject trace context per request
+    # -----------------------------------------------------------------------
+
+    @app.middleware("http")
+    async def _trace_middleware(request: Request, call_next):
+        """Set up a trace context for each HTTP request.
+
+        Extracts existing trace headers from the incoming request
+        (e.g. ``X-Trace-Id`` / ``X-Span-Id``) or generates a fresh root
+        context.  Logs request start and completion with duration.
+        """
+        # Attempt to extract trace context from request headers
+        headers = dict(request.headers)
+        ctx = TraceProvider.extract(headers)
+        if ctx is None:
+            ctx = TraceProvider().new_context(baggage={"method": request.method, "path": request.url.path})
+
+        start = time.perf_counter()
+        with with_trace_context(context=ctx):
+            log.info("http_request_start", method=request.method, path=request.url.path, trace_id=ctx.trace_id)
+            response = await call_next(request)
+            elapsed = (time.perf_counter() - start) * 1000
+            log.info("http_request_end", method=request.method, path=request.url.path, status_code=response.status_code, duration_ms=round(elapsed, 2), trace_id=ctx.trace_id)
+            response.headers["X-Trace-Id"] = ctx.trace_id
+        return response
+
+    # -----------------------------------------------------------------------
     # Exception handlers — unified error responses
     # -----------------------------------------------------------------------
 
     @app.exception_handler(A2AServerError)
     async def _a2a_server_error_handler(request: Request, exc: A2AServerError):
         """Handle A2AServerError — our custom exception with string error codes."""
-        logger.warning("A2AServerError [%d] %s: %s", exc.status_code, exc.code, exc.message)
+        log.warn("a2a_server_error", message=f"[{exc.status_code}] {exc.code}: {exc.message}", status_code=exc.status_code, error_code=exc.code)
         return JSONResponse(
             status_code=exc.status_code,
             content={"error": {"code": exc.code, "message": exc.message}},
@@ -275,7 +304,7 @@ def _build_app(facade: Optional[A2AFacade] = None):
     @app.exception_handler(Exception)
     async def _general_exception_handler(request: Request, exc: Exception):
         """Catch-all handler: logs full traceback, returns safe 500."""
-        logger.exception("Unhandled server error at %s %s", request.method, request.url.path)
+        log.error("unhandled_error", message=f"Unhandled server error at {request.method} {request.url.path}", error=exc, method=request.method, path=request.url.path)
         return JSONResponse(
             status_code=500,
             content={"error": {"code": "INTERNAL_ERROR",
