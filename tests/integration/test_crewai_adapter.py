@@ -16,6 +16,11 @@ Usage:
 Reference: research/phase13-integration-plan.md — Task 1
 """
 
+import json
+import os
+import subprocess
+import sys
+import time
 import unittest
 from typing import Optional
 from unittest import mock
@@ -396,6 +401,290 @@ class TestCrewAIIntegrationScenarios(unittest.TestCase):
     def test_crewai_task_with_agentmesh_context(self) -> None:
         """CrewAI task execution with AgentMesh context data."""
         raise NotImplementedError("Implement with real CrewAI adapter")
+
+
+# ---------------------------------------------------------------------------
+# Run directly
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Real Server Integration Tests
+# ---------------------------------------------------------------------------
+
+class TestCrewAIRealServerIntegration(unittest.TestCase):
+    """CrewAI adapter operations tested against a real A2A Server.
+
+    These tests verify that the operations a CrewAI adapter would perform
+    (send cards, receive cards, register agents, lifecycle management)
+    work correctly against a real A2A Server using HttpProvider.
+
+    Note: The concrete CrewAIAdapter uses /api/v1/ endpoint paths which
+    differ from the root-level server endpoints. These tests validate the
+    protocol-level operations that underpin adapter functionality.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls._server_port = int(os.environ.get("A2A_SERVER_PORT", "8089"))
+        cls.server_url = f"http://localhost:{cls._server_port}"
+
+        import urllib.request, urllib.error
+
+        # Try to detect an already-running server
+        for _ in range(5):
+            try:
+                req = urllib.request.Request(
+                    f"http://localhost:{cls._server_port}/ping", method="GET"
+                )
+                with urllib.request.urlopen(req, timeout=2):
+                    cls._server_proc = None
+                    break
+            except Exception:
+                pass
+
+            if not hasattr(cls, "_server_proc") or cls._server_proc is None:
+                _repo_root = os.path.normpath(
+                    os.path.join(os.path.dirname(__file__), "..", "..")
+                )
+                _server_script = os.path.join(
+                    _repo_root, "agentmesh", "a2a_server.py"
+                )
+                cls._server_proc = subprocess.Popen(
+                    [sys.executable, _server_script, "server", "--port", str(cls._server_port)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+
+            time.sleep(1.0)
+        else:
+            # Final check
+            try:
+                req = urllib.request.Request(
+                    f"http://localhost:{cls._server_port}/ping", method="GET"
+                )
+                with urllib.request.urlopen(req, timeout=2):
+                    pass
+            except Exception as exc:
+                raise RuntimeError(
+                    f"A2A Server failed to start on :{cls._server_port}: {exc}"
+                )
+
+        from agentmesh.a2a_server import HttpProvider
+        cls.client = HttpProvider(cls.server_url, "crewai-real-adapter-test")
+
+    @classmethod
+    def tearDownClass(cls):
+        if hasattr(cls, "_server_proc") and cls._server_proc and cls._server_proc.poll() is None:
+            cls._server_proc.terminate()
+            try:
+                cls._server_proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                cls._server_proc.kill()
+                cls._server_proc.wait(timeout=3)
+            time.sleep(0.5)  # Let port drain
+
+    def setUp(self):
+        self.task_id_base = f"crewai_real_{int(time.time() * 1000)}"
+
+    # ------------------------------------------------------------------
+    # Test 1: Adapter-level card send through real server
+    # ------------------------------------------------------------------
+
+    def test_send_card_via_real_server(self):
+        """Simulate sending a text Card through the real A2A Server.
+
+        A CrewAI adapter sends a card by creating an A2A task with
+        structured card payload: sender_id, recipient_id, card_type,
+        and card content.
+        """
+        task_id = f"{self.task_id_base}_send_card"
+        card_payload = {
+            "type": "text",
+            "content": "Text card from CrewAI agent",
+            "sender_id": "crewai_sender_01",
+            "recipient_id": "crewai_receiver_01",
+            "card_type": "text",
+        }
+        task = {
+            "id": task_id,
+            "status": {"state": "submitted"},
+            "payload": card_payload,
+        }
+        r = self.client.send_message(task)
+        self.assertTrue(r.success, f"Failed to send card: {r.error}")
+        self.assertEqual(r.task_state, "submitted")
+
+        # Verify the card payload was stored intact
+        r2 = self.client.get_task(task_id)
+        self.assertTrue(r2.success)
+        stored = r2.data["payload"]
+        self.assertEqual(stored["content"], "Text card from CrewAI agent")
+        self.assertEqual(stored["sender_id"], "crewai_sender_01")
+        self.assertEqual(stored["card_type"], "text")
+
+    # ------------------------------------------------------------------
+    # Test 2: Adapter-level card receive through real server
+    # ------------------------------------------------------------------
+
+    def test_receive_card_via_real_server(self):
+        """Simulate receiving a card through the real A2A Server.
+
+        Send a card as one agent, then retrieve it as another agent.
+        This validates the adapter's receive_card() equivalent flow.
+        """
+        task_id = f"{self.task_id_base}_receive_card"
+        card_payload = {
+            "type": "data",
+            "content": {"key": "value", "number": 42},
+            "sender_id": "crewai_sender_02",
+            "recipient_id": "crewai_receiver_02",
+            "card_type": "data",
+        }
+        task = {
+            "id": task_id,
+            "status": {"state": "submitted"},
+            "payload": card_payload,
+        }
+
+        # Sender sends
+        r_send = self.client.send_message(task)
+        self.assertTrue(r_send.success)
+
+        # Receiver retrieves (get task = receive card)
+        r_recv = self.client.get_task(task_id)
+        self.assertTrue(r_recv.success)
+        self.assertEqual(r_recv.data["payload"]["recipient_id"], "crewai_receiver_02")
+        self.assertEqual(r_recv.data["payload"]["content"]["number"], 42)
+
+    # ------------------------------------------------------------------
+    # Test 3: Agent registration (equivalent to adapter's register_agent)
+    # ------------------------------------------------------------------
+
+    def test_register_agent_for_crewai(self):
+        """Register a CrewAI agent card on the real server."""
+        r = self.client.register_agent(
+            "crewai_researcher",
+            ["research", "analysis", "reporting"],
+        )
+        self.assertTrue(r.success)
+
+        r2 = self.client.register_agent(
+            "crewai_writer",
+            ["writing", "editing"],
+        )
+        self.assertTrue(r2.success)
+
+    # ------------------------------------------------------------------
+    # Test 4: Adapter lifecycle (send -> get -> cancel -> get)
+    # ------------------------------------------------------------------
+
+    def test_card_lifecycle_like_adapter(self):
+        """Full lifecycle as a CrewAI adapter would use it.
+
+        Steps:
+          1. send_card() / send_message -> task.submitted
+          2. poll/receive/get_task -> task retrieved
+          3. cancel -> task.canceled
+          4. verify state -> task.canceled confirmed
+        """
+        task_id = f"{self.task_id_base}_lifecycle"
+        card_payload = {
+            "type": "tool_call",
+            "content": {
+                "tool": "agentmesh_send",
+                "params": {"target": "crewai_receiver_03"},
+            },
+            "sender_id": "crewai_sender_03",
+            "recipient_id": "crewai_receiver_03",
+            "card_type": "tool_call",
+        }
+
+        # Step 1: Send (simulating adapter.send_card)
+        task = {
+            "id": task_id,
+            "status": {"state": "submitted"},
+            "payload": card_payload,
+        }
+        r_send = self.client.send_message(task)
+        self.assertTrue(r_send.success)
+        self.assertEqual(r_send.task_state, "submitted")
+
+        # Step 2: Receive (simulating adapter.receive_card / poll)
+        r_get = self.client.get_task(task_id)
+        self.assertTrue(r_get.success)
+        self.assertEqual(r_get.data["payload"]["sender_id"], "crewai_sender_03")
+
+        # Step 3: Cancel
+        r_cancel = self.client.cancel_task(task_id)
+        self.assertTrue(r_cancel.success)
+        self.assertEqual(r_cancel.task_state, "canceled")
+
+        # Step 4: Verify
+        r_verify = self.client.get_task(task_id)
+        self.assertTrue(r_verify.success)
+        self.assertEqual(r_verify.data["status"]["state"], "canceled")
+
+    # ------------------------------------------------------------------
+    # Test 5: Multiple cards (adapter managing conversations)
+    # ------------------------------------------------------------------
+
+    def test_multiple_cards_for_adapter(self):
+        """An adapter managing multiple concurrent card exchanges.
+
+        CrewAI agents may send and receive multiple cards simultaneously.
+        The server must handle each independently.
+        """
+        cards = [
+            {
+                "id": f"{self.task_id_base}_multi_a",
+                "payload": {
+                    "type": "text",
+                    "content": f"Card A from adapter",
+                    "sender_id": "crewai_a",
+                    "recipient_id": "crewai_b",
+                    "card_type": "text",
+                },
+            },
+            {
+                "id": f"{self.task_id_base}_multi_b",
+                "payload": {
+                    "type": "data",
+                    "content": {"scores": [95, 87, 92]},
+                    "sender_id": "crewai_c",
+                    "recipient_id": "crewai_d",
+                    "card_type": "data",
+                },
+            },
+            {
+                "id": f"{self.task_id_base}_multi_c",
+                "payload": {
+                    "type": "tool_call",
+                    "content": {"tool": "search", "query": "test"},
+                    "sender_id": "crewai_e",
+                    "recipient_id": "crewai_f",
+                    "card_type": "tool_call",
+                },
+            },
+        ]
+
+        # Send all
+        for c in cards:
+            task = {
+                "id": c["id"],
+                "status": {"state": "submitted"},
+                "payload": c["payload"],
+            }
+            r = self.client.send_message(task)
+            self.assertTrue(r.success, f"Failed to send {c['id']}")
+
+        # Retrieve all and verify
+        for c in cards:
+            r = self.client.get_task(c["id"])
+            self.assertTrue(r.success, f"Failed to get {c['id']}")
+            self.assertEqual(
+                r.data["payload"]["card_type"],
+                c["payload"]["card_type"],
+            )
 
 
 # ---------------------------------------------------------------------------
