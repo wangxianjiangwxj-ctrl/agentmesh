@@ -279,4 +279,4 @@ converted = compat.resolve(message)  # 自动映射_compat_字段
 
 ## 完整示例
 
-> 参见[示例文档](../examples/)获取完整场景演示
+> 参见[示例文档](../examples/01-two-agent-research.md)获取完整场景演示

@@ -83,5 +83,5 @@ agentmesh run flow.json
 ## 下一步
 
 - 查看[架构文档](architecture.md)了解系统设计
-- 运行[完整示例](examples/)看场景演示
+- 运行[完整示例](examples/01-two-agent-research.md)看场景演示
 - 接入[A2A适配器](api/adapter.md)与A2A生态互操作

@@ -51,7 +51,7 @@ print(f"累积保真度: {flow.fidelity_tracker.cumulative_fidelity:.3f}")
 print(f"贡献度: {report['allocation']['shares']}")
 ```
 
-> [5分钟快速上手](quickstart.md) | [架构文档](architecture.md) | [完整示例](examples/)
+> [5分钟快速上手](quickstart.md) | [架构文档](architecture.md) | [完整示例](examples/01-two-agent-research.md)
 
 ---
 
