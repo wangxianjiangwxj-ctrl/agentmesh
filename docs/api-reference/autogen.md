@@ -334,3 +334,9 @@ if hasattr(proxy, '_generate_reply_fn'):
 - [CrewAI Adapter](crewai.md) — CrewAI 集成适配器
 - [Provider API](provider.md) — 底层 Provider 抽象
 - [A2A Test Server 指南](../a2a-test-server.md) — 搭建测试环境
+
+---
+
+## `agentmesh.a2a.integration.autogen_adapter` 自动生成参考
+
+::: agentmesh.a2a.integration.autogen_adapter

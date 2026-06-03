@@ -1,57 +1,120 @@
+# AgentMesh 文档站配置
 docs_dir: docs
-markdown_extensions:
-- admonition
-- codehilite
-- toc:
-    permalink: true
-- pymdownx.superfences
-nav:
-- 博客: blog/agentmesh-intro.md
-- 首页: index.md
-- 架构: architecture.md
-- 快速开始: quickstart.md
-- API文档:
-  - SDK: api/sdk.md
-  - A2A适配器: api/adapter.md
-  - A2A Test Server: a2a-test-server.md
-- API Reference (自动生成):
-  - 概述: api-reference/index.md
-  - Trace: api-reference/trace.md
-  - Log: api-reference/log.md
-  - Provider: api-reference/provider.md
-  - CrewAI Adapter: api-reference/crewai.md
-  - AutoGen Adapter: api-reference/autogen.md
-- 示例:
-  - 两Agent研究协作: examples/01-two-agent-research.md
-  - 三Agent代码审查: examples/02-three-agent-review.md
-  - 跨A2A协作: examples/03-cross-a2a-collaboration.md
-  - 本地Agent A2A桥接: examples/04-local-bridge.md
-  - 远程A2A服务连接: examples/05-remote-a2a-server.md
-  - CLI Serve/Connect 工作流: examples/06-cli-workflow.md
-- CLI: cli.md
-- 路线图: roadmap.md
-plugins:
-- search
-- macros
-- mkdocstrings:
-    handlers:
-      python:
-        paths: [.]
-        options:
-          docstring_style: google
-repo_name: agentmesh
-repo_url: https://github.com/wangxianjiangwxj-ctrl/agentmesh
-site_description: 让Agent协作不再丢信息、贡献可量化
+
 site_name: AgentMesh
-site_url: https://wangxianjiangwxj-ctrl.github.io/agentmesh
+site_url: https://wangxianjiangwxj-ctrl.github.io/agentmesh/
+site_description: 让Agent协作不再丢信息、贡献可量化
+
+repo_name: wangxianjiangwxj-ctrl/agentmesh
+repo_url: https://github.com/wangxianjiangwxj-ctrl/agentmesh
+edit_uri: edit/main/docs/
+
+copyright: Copyright &copy; 2024-2026 AgentMesh Contributors
+
 theme:
-  features:
-  - navigation.instant
-  - navigation.tracking
-  - navigation.top
-  - search.suggest
-  - search.highlight
   name: material
+  logo: assets/images/favicon.png
+  favicon: assets/images/favicon.png
+  language: zh
+
   palette:
-    accent: teal
-    primary: indigo
+    # 日间模式 (light)
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: 切换至夜间模式
+
+    # 夜间模式 (dark)
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: 切换至日间模式
+
+  features:
+    # 导航增强
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+
+    # 搜索增强
+    - search.suggest
+    - search.highlight
+
+    # 内容增强
+    - content.tabs
+    - content.code.annotate
+    - content.code.copy
+
+extra_css:
+  - assets/stylesheets/extra.css
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/wangxianjiangwxj-ctrl/agentmesh
+      name: AgentMesh on GitHub
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+
+plugins:
+  - search
+  - macros
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [.]
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_category_heading: true
+            show_if_no_docstring: false
+            heading_level: 3
+
+nav:
+  - 博客: blog/agentmesh-intro.md
+  - 首页: index.md
+  - 架构: architecture.md
+  - 快速开始: quickstart.md
+  - API文档:
+    - SDK: api/sdk.md
+    - A2A适配器: api/adapter.md
+    - A2A Test Server: a2a-test-server.md
+  - API Reference (自动生成):
+    - 概述 (agentmesh): api-reference/index.md
+    - Trace 追踪: api-reference/trace.md
+    - Log 日志: api-reference/log.md
+    - Provider 提供者: api-reference/provider.md
+    - A2A 子包: api-reference/adapter-index.md
+    - CrewAI 适配器: api-reference/crewai.md
+    - AutoGen 适配器: api-reference/autogen.md
+  - 示例:
+    - 两Agent研究协作: examples/01-two-agent-research.md
+    - 三Agent代码审查: examples/02-three-agent-review.md
+    - 跨A2A协作: examples/03-cross-a2a-collaboration.md
+    - 本地Agent A2A桥接: examples/04-local-bridge.md
+    - 远程A2A服务连接: examples/05-remote-a2a-server.md
+    - CLI Serve/Connect 工作流: examples/06-cli-workflow.md
+  - CLI: cli.md
+  - 路线图: roadmap.md

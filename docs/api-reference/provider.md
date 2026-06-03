@@ -375,3 +375,9 @@ print(f"Cancel: state={r3.task_state}")
 - [A2A Test Server 指南](../a2a-test-server.md) — 完整的服务器启动和测试指南
 - [Trace API](trace.md) — 追踪上下文与 Provider 集成
 - [Log API](log.md) — 服务器端日志记录
+
+---
+
+## `agentmesh.a2a_provider` 自动生成参考
+
+::: agentmesh.a2a_provider

@@ -199,3 +199,9 @@ with with_trace_context(context=received_ctx) as restored:
 
 - [Log API](log.md) — 结构化日志会自动附加当前追踪上下文
 - [Provider API](provider.md) — Provider 层使用 Trace ID 追踪任务
+
+---
+
+## `agentmesh.a2a._trace` 自动生成参考
+
+::: agentmesh.a2a._trace

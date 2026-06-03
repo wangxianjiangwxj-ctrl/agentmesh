@@ -1,0 +1,74 @@
+/*
+ * AgentMesh 文档站额外样式
+ * 基于 mkdocs-material 主题的自定义优化
+ */
+
+/* 🎨 整体间距优化 */
+.md-content {
+  max-width: 52rem;
+}
+
+.md-content__inner {
+  padding-top: 1.6rem;
+}
+
+/* 🔗 表格样式增强 */
+.md-typeset table:not([class]) {
+  font-size: 0.85rem;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.md-typeset table:not([class]) th {
+  font-weight: 600;
+  background-color: var(--md-primary-fg-color);
+  color: var(--md-primary-bg-color);
+}
+
+/* 📝 代码块样式 */
+.md-typeset code {
+  border-radius: 3px;
+  padding: 0 0.3em;
+  font-size: 0.85em;
+}
+
+.md-typeset pre > code {
+  padding: 0.8em 1em;
+  border-radius: 6px;
+}
+
+/* 📋 admonition 卡片间距 */
+.md-typeset .admonition {
+  margin: 1.5em 0;
+}
+
+/* 🏗️ 导航优化 */
+.md-nav__link--active {
+  font-weight: 600;
+}
+
+.md-nav__title {
+  font-weight: 700;
+}
+
+/* ⚡ 页脚对齐 */
+.md-footer-meta__inner {
+  justify-content: space-between;
+}
+
+.md-footer-meta .md-social {
+  margin-right: 0;
+}
+
+/* 🖼️ Logo 圆角优化 */
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  border-radius: 4px;
+}
+
+/* 移动端适配 */
+@media screen and (max-width: 76.1875em) {
+  .md-content {
+    max-width: 100%;
+  }
+}

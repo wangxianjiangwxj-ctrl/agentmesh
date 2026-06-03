@@ -213,3 +213,9 @@ log.info("request", method="GET", path="/health")
 
 - [Trace API](trace.md) — 追踪上下文自动注入日志
 - [Provider API](provider.md) — 服务器使用 StructuredLogger 记录请求
+
+---
+
+## `agentmesh.a2a._log` 自动生成参考
+
+::: agentmesh.a2a._log

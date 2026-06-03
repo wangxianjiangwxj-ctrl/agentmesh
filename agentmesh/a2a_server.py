@@ -42,7 +42,6 @@ import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 from typing import (
-    Any,
     AsyncGenerator,
     Callable,
     Dict,
@@ -53,6 +52,8 @@ from typing import (
     Tuple,
     Union,
 )
+
+from agentmesh.a2a._types import ErrorDict
 
 from agentmesh.a2a import StructuredLogger, with_trace_context, TraceProvider
 
@@ -209,7 +210,7 @@ class A2ARequest:
 class A2AResponse:
     """Response body from the A2A server."""
     success: bool
-    data: Any = None
+    data: Union[dict, list, str, int, float, bool, None] = None
     error: Optional[dict] = None
     task_state: Optional[str] = None
 
@@ -574,7 +575,7 @@ def _build_app(facade: Optional[A2AFacade] = None,
     return app
 
 
-def _sse_event(event_type: str, data: Any) -> bytes:
+def _sse_event(event_type: str, data: Union[dict, A2AResult]) -> bytes:
     """Format data as an SSE event payload."""
     if isinstance(data, A2AResult):
         payload = {
@@ -591,7 +592,7 @@ def _sse_event(event_type: str, data: Any) -> bytes:
     return f"event: {event_type}\ndata: {json.dumps(payload)}\n\n".encode("utf-8")
 
 
-def _serialize_error(error: Any) -> Optional[dict]:
+def _serialize_error(error: Union[A2AError, dict, str, ErrorDict, None]) -> Optional[dict]:
     if error is None:
         return None
     if isinstance(error, A2AError):
@@ -601,7 +602,7 @@ def _serialize_error(error: Any) -> Optional[dict]:
     return {"code": 500, "message": str(error), "recoverable": False}
 
 
-def _error_code(error: Any, default: int) -> int:
+def _error_code(error: Union[A2AError, dict, int, None], default: int) -> int:
     if isinstance(error, A2AError):
         return error.code
     return default
@@ -867,7 +868,7 @@ class SSEStream:
         self.timeout: int = timeout
         self.heartbeat_timeout: float = heartbeat_timeout
 
-    def __iter__(self) -> Iterator[Tuple[str, Any]]:
+    def __iter__(self) -> Iterator[Tuple[str, Union[dict, str, int, float, bool, list, None]]]:
         """Iterate over (event_type, data_dict) tuples from the SSE stream."""
         last_activity = time.monotonic()
         retries = 0

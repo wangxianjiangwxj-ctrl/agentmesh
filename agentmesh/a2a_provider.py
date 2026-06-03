@@ -11,7 +11,9 @@ MemoryProvider提供本地内存模拟，HttpProvider连接真实A2A Server。
 
 from __future__ import annotations
 
-from typing import Any, Callable, List, Optional, Set, TypeVar, overload
+from typing import Any, Callable, Dict, List, Optional, Set, TypeVar, Union, overload
+
+from agentmesh.a2a._types import ErrorDict, ResultData
 
 
 ## ============================================================
@@ -25,8 +27,8 @@ class A2AResult:
     def __init__(
         self,
         success: bool,
-        data: Any = None,
-        error: Any = None,
+        data: ResultData = None,
+        error: Union[Dict[str, Any], str, None] = None,
         task_state: Optional[str] = None,
     ) -> None:
         self.success = success
@@ -35,11 +37,11 @@ class A2AResult:
         self.task_state = task_state
 
     @classmethod
-    def ok(cls, data: Any, task_state: Optional[str] = None) -> A2AResult:
+    def ok(cls, data: ResultData, task_state: Optional[str] = None) -> A2AResult:
         return cls(True, data=data, task_state=task_state)
 
     @classmethod
-    def fail(cls, error: Any, task_state: Optional[str] = None) -> A2AResult:
+    def fail(cls, error: Union[Dict[str, Any], str, A2AError, None], task_state: Optional[str] = None) -> A2AResult:
         return cls(False, error=error, task_state=task_state)
 
     def __bool__(self):
@@ -341,18 +343,18 @@ def _backoff_sleep(attempt: int, backoff_factor: float = 1.0,
     _time_module.sleep(delay + jitter)
 
 
-_F = TypeVar("_F", bound=Callable[..., Any])
+_F = TypeVar("_F", bound=Callable[..., object])
 
 
 def with_retry(
-    fn: Optional[Callable[..., Any]] = None,
+    fn: Optional[Callable[..., object]] = None,
     *,
     max_retries: int = 3,
     backoff_factor: float = 1.0,
     max_backoff: float = 30.0,
     retryable_statuses: Optional[Set[int]] = None,
     retry_on_network_error: bool = True,
-) -> Callable[..., Any]:
+) -> Callable[..., object]:
     """Decorator that wraps a function with automatic retry logic.
 
     Can be used with or without arguments::
