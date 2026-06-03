@@ -43,15 +43,21 @@ theme:
     - navigation.sections
     - navigation.expand
     - navigation.top
+    - navigation.indexes
 
     # 搜索增强
     - search.suggest
     - search.highlight
+    - search.share
 
     # 内容增强
     - content.tabs
     - content.code.annotate
     - content.code.copy
+
+  font:
+    text: Noto Sans SC
+    code: JetBrains Mono
 
 extra_css:
   - assets/stylesheets/extra.css
@@ -61,6 +67,24 @@ extra:
     - icon: fontawesome/brands/github
       link: https://github.com/wangxianjiangwxj-ctrl/agentmesh
       name: AgentMesh on GitHub
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/agentmesh/
+      name: AgentMesh on PyPI
+    - icon: fontawesome/brands/x-twitter
+      link: https://twitter.com/agentmesh
+      name: AgentMesh on Twitter
+
+  # SEO: Open Graph & Twitter Card
+  generator: false
+
+  analytics:
+    provider: google
+    property: !ENV [GA_MEASUREMENT_ID, '']
+
+  consent:
+    title: Cookie 声明
+    description: >-
+      本站使用 Cookie 来提供基础服务和分析流量。
 
 markdown_extensions:
   - admonition
