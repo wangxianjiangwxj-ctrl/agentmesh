@@ -11,6 +11,8 @@ nav:
 - 首页: index.md
 - 架构: architecture.md
 - 快速开始: quickstart.md
+- 教程:
+  - 从零搭建第一个 Agent: tutorials/first-agent.md
 - API文档:
   - SDK: api/sdk.md
   - A2A适配器: api/adapter.md
@@ -39,3 +41,5 @@ theme:
   palette:
     accent: teal
     primary: indigo
+  font:
+    text: Noto Sans SC
