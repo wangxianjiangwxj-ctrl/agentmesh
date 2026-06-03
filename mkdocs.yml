@@ -97,6 +97,12 @@ nav:
   - 首页: index.md
   - 架构: architecture.md
   - 快速开始: quickstart.md
+  - 核心概念:
+      - Providers: concepts/providers.md
+      - A2A 协议: concepts/a2a-protocol.md
+      - Agent 编排: concepts/agents.md
+      - 运行时: concepts/runtime.md
+  - 故障排查: troubleshooting.md
   - API文档:
     - SDK: api/sdk.md
     - A2A适配器: api/adapter.md
