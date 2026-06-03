@@ -9,6 +9,11 @@ MemoryProvider提供本地内存模拟，HttpProvider连接真实A2A Server。
   from a2a_provider import A2AProvider, MemoryProvider, HttpProvider, A2AResult
 """
 
+from __future__ import annotations
+
+from typing import Any, Callable, List, Optional, Set, TypeVar, overload
+
+
 ## ============================================================
 ## A2A Result & Error
 ## ============================================================
@@ -17,18 +22,24 @@ MemoryProvider提供本地内存模拟，HttpProvider连接真实A2A Server。
 class A2AResult:
     """A2A操作结果封装"""
 
-    def __init__(self, success: bool, data=None, error=None, task_state=None):
+    def __init__(
+        self,
+        success: bool,
+        data: Any = None,
+        error: Any = None,
+        task_state: Optional[str] = None,
+    ) -> None:
         self.success = success
         self.data = data
         self.error = error
         self.task_state = task_state
 
     @classmethod
-    def ok(cls, data, task_state=None):
+    def ok(cls, data: Any, task_state: Optional[str] = None) -> A2AResult:
         return cls(True, data=data, task_state=task_state)
 
     @classmethod
-    def fail(cls, error, task_state=None):
+    def fail(cls, error: Any, task_state: Optional[str] = None) -> A2AResult:
         return cls(False, error=error, task_state=task_state)
 
     def __bool__(self):
@@ -92,16 +103,16 @@ class A2ATaskState:
 class A2ATaskManager:
     """A2A Task状态机管理器"""
 
-    def __init__(self):
-        self._tasks = {}
+    def __init__(self) -> None:
+        self._tasks: dict = {}
 
     def track(
         self,
         task_id: str,
         initial_state: str = A2ATaskState.PENDING,
-        parent_id: str = None,
-        metadata: dict = None,
-    ):
+        parent_id: Optional[str] = None,
+        metadata: Optional[dict] = None,
+    ) -> dict:
         if task_id in self._tasks:
             raise A2AError(409, f"Task already tracked: {task_id}")
         self._tasks[task_id] = {
@@ -129,16 +140,16 @@ class A2ATaskManager:
         task["updated_at"] = __import__("datetime").datetime.utcnow().isoformat()
         return True
 
-    def get_task(self, task_id: str):
+    def get_task(self, task_id: str) -> Optional[dict]:
         return self._tasks.get(task_id)
 
-    def get_children(self, task_id: str):
+    def get_children(self, task_id: str) -> List[dict]:
         task = self._tasks.get(task_id)
         if not task:
             return []
         return [self._tasks[cid] for cid in task["children_ids"] if cid in self._tasks]
 
-    def cleanup(self, max_age_seconds: float = 3600):
+    def cleanup(self, max_age_seconds: float = 3600) -> None:
         now = __import__("datetime").datetime.utcnow()
         to_remove = []
         for tid, t in self._tasks.items():
@@ -165,25 +176,25 @@ class A2AProvider:
     可选实现: send_streaming, fetch_agent_card, ping
     """
 
-    def __init__(self, name: str):
+    def __init__(self, name: str) -> None:
         self._name = name
-        self._capabilities = set()
+        self._capabilities: Set[str] = set()
 
     @property
     def name(self) -> str:
         return self._name
 
     @property
-    def capabilities(self) -> set:
+    def capabilities(self) -> Set[str]:
         return self._capabilities
 
-    def send_message(self, task: dict, auth: dict = None) -> A2AResult:
+    def send_message(self, task: dict, auth: Optional[dict] = None) -> A2AResult:
         raise NotImplementedError
 
-    def get_task(self, task_id: str, auth: dict = None) -> A2AResult:
+    def get_task(self, task_id: str, auth: Optional[dict] = None) -> A2AResult:
         raise NotImplementedError
 
-    def cancel_task(self, task_id: str, auth: dict = None) -> A2AResult:
+    def cancel_task(self, task_id: str, auth: Optional[dict] = None) -> A2AResult:
         raise NotImplementedError
 
     def ping(self) -> A2AResult:
@@ -203,32 +214,32 @@ class MemoryProvider(A2AProvider):
     不需要启动外部A2A Server
     """
 
-    def __init__(self, name: str = "memory"):
+    def __init__(self, name: str = "memory") -> None:
         super().__init__(name)
-        self._tasks = {}
-        self._agent_cards = {}
-        self._capabilities = {"local", "no-network"}
+        self._tasks: dict = {}
+        self._agent_cards: dict = {}
+        self._capabilities: Set[str] = {"local", "no-network"}
 
-    def register_agent_card(self, card: dict):
+    def register_agent_card(self, card: dict) -> None:
         self._agent_cards[card.get("name", "")] = card
 
-    def get_agent_card(self, name: str) -> dict:
+    def get_agent_card(self, name: str) -> Optional[dict]:
         return self._agent_cards.get(name)
 
-    def send_message(self, task: dict, auth=None) -> A2AResult:
+    def send_message(self, task: dict, auth: Optional[dict] = None) -> A2AResult:
         task_id = task.get("id", "")
         if not task_id:
             return A2AResult.fail(A2AError(400, "Missing task id"))
         self._tasks[task_id] = task
         return A2AResult.ok(task, task_state="submitted")
 
-    def get_task(self, task_id: str, auth=None) -> A2AResult:
+    def get_task(self, task_id: str, auth: Optional[dict] = None) -> A2AResult:
         task = self._tasks.get(task_id)
         if not task:
             return A2AResult.fail(A2AError(404, f"Task not found: {task_id}"))
         return A2AResult.ok(task, task_state=task.get("status", {}).get("state", "unknown"))
 
-    def cancel_task(self, task_id: str, auth=None) -> A2AResult:
+    def cancel_task(self, task_id: str, auth: Optional[dict] = None) -> A2AResult:
         task = self._tasks.get(task_id)
         if not task:
             return A2AResult.fail(A2AError(404, f"Task not found: {task_id}"))
@@ -251,7 +262,11 @@ class A2AFacade:
     自动完成：AgentMesh→A2A转换 → Provider.send → 响应 → A2A→AgentMesh转换
     """
 
-    def __init__(self, provider: A2AProvider = None, task_manager: A2ATaskManager = None):
+    def __init__(
+        self,
+        provider: Optional[A2AProvider] = None,
+        task_manager: Optional[A2ATaskManager] = None,
+    ) -> None:
         self.provider = provider or MemoryProvider()
         self.task_manager = task_manager or A2ATaskManager()
 
@@ -326,15 +341,18 @@ def _backoff_sleep(attempt: int, backoff_factor: float = 1.0,
     _time_module.sleep(delay + jitter)
 
 
+_F = TypeVar("_F", bound=Callable[..., Any])
+
+
 def with_retry(
-    fn=None,
+    fn: Optional[Callable[..., Any]] = None,
     *,
     max_retries: int = 3,
     backoff_factor: float = 1.0,
     max_backoff: float = 30.0,
-    retryable_statuses=None,
+    retryable_statuses: Optional[Set[int]] = None,
     retry_on_network_error: bool = True,
-):
+) -> Callable[..., Any]:
     """Decorator that wraps a function with automatic retry logic.
 
     Can be used with or without arguments::

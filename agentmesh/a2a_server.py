@@ -27,6 +27,8 @@ Design:
     - Compatible with the A2AProvider interface (HttpProvider)
 """
 
+from __future__ import annotations
+
 import asyncio
 import http.client
 import json
@@ -39,7 +41,18 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
-from typing import Any, AsyncGenerator, List, Optional
+from typing import (
+    Any,
+    AsyncGenerator,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 
 from agentmesh.a2a import StructuredLogger, with_trace_context, TraceProvider
 
@@ -123,7 +136,7 @@ class A2AServerError(Exception):
         code: Machine-readable error code string
         message: Human-readable error description
     """
-    def __init__(self, status_code: int, code: str, message: str):
+    def __init__(self, status_code: int, code: str, message: str) -> None:
         self.status_code = status_code
         self.code = code
         self.message = message
@@ -209,7 +222,7 @@ class A2AResponse:
         })
 
     @classmethod
-    def from_json(cls, raw: str) -> "A2AResponse":
+    def from_json(cls, raw: str) -> A2AResponse:
         d = json.loads(raw)
         return cls(
             success=d["success"],
@@ -225,7 +238,7 @@ class A2AResponse:
 
 
 def _build_app(facade: Optional[A2AFacade] = None,
-                timeout_config: Optional[ServerTimeoutConfig] = None):
+                timeout_config: Optional[ServerTimeoutConfig] = None) -> FastAPI:
     """Build a FastAPI application wrapping the given A2AFacade.
 
     To integrate into an existing FastAPI app, import this function
@@ -619,10 +632,14 @@ class HttpProvider(A2AProvider):
         result = provider.cancel_task("t1")
     """
 
-    def __init__(self, base_url: str = "http://localhost:8080", name: str = "http",
-                 timeout_config: Optional[ServerTimeoutConfig] = None,
-                 max_retries: int = 3,
-                 backoff_factor: float = 1.0):
+    def __init__(
+        self,
+        base_url: str = "http://localhost:8080",
+        name: str = "http",
+        timeout_config: Optional[ServerTimeoutConfig] = None,
+        max_retries: int = 3,
+        backoff_factor: float = 1.0,
+    ) -> None:
         """
         Args:
             base_url: Server base URL.
@@ -632,36 +649,36 @@ class HttpProvider(A2AProvider):
             backoff_factor: Exponential backoff multiplier in seconds.
         """
         super().__init__(name)
-        self.base_url = base_url.rstrip("/")
-        self._capabilities = {"http", "network"}
-        self._timeout_config = timeout_config or ServerTimeoutConfig()
-        self._max_retries = max_retries
-        self._backoff_factor = backoff_factor
+        self.base_url: str = base_url.rstrip("/")
+        self._capabilities: Set[str] = {"http", "network"}
+        self._timeout_config: ServerTimeoutConfig = timeout_config or ServerTimeoutConfig()
+        self._max_retries: int = max_retries
+        self._backoff_factor: float = backoff_factor
 
     # ---- A2AProvider interface ----
 
     def send_message(self, task: dict, auth: Optional[dict] = None) -> A2AResult:
-        payload = {"task": task, "auth": auth}
-        resp = self._post("/send", payload)
+        payload: dict = {"task": task, "auth": auth}
+        resp: dict = self._post("/send", payload)
         return self._to_result(resp)
 
     def get_task(self, task_id: str, auth: Optional[dict] = None) -> A2AResult:
-        resp = self._get(f"/task/{task_id}")
+        resp: dict = self._get(f"/task/{task_id}")
         return self._to_result(resp)
 
     def cancel_task(self, task_id: str, auth: Optional[dict] = None) -> A2AResult:
-        resp = self._post(f"/cancel/{task_id}", {})
+        resp: dict = self._post(f"/cancel/{task_id}", {})
         return self._to_result(resp)
 
     def ping(self) -> A2AResult:
-        resp = self._get("/ping")
+        resp: dict = self._get("/ping")
         return self._to_result(resp)
 
     def register_agent(self, name: str, skills: Optional[List[str]] = None) -> A2AResult:
-        resp = self._post("/agents", {"name": name, "skills": skills or []})
+        resp: dict = self._post("/agents", {"name": name, "skills": skills or []})
         return self._to_result(resp)
 
-    def stream_task(self, task_id: str) -> "SSEStream":
+    def stream_task(self, task_id: str) -> SSEStream:
         """Open an SSE stream for task state updates.
 
         Returns an SSEStream iterator that yields (event_type, data_dict)
@@ -826,11 +843,15 @@ class SSEStream:
     Thread-safe: opens its own HTTP connection on iteration.
     """
 
-    def __init__(self, base_url: str, task_id: str,
-                 max_retries: int = 3,
-                 backoff_factor: float = 1.0,
-                 timeout: int = 30,
-                 heartbeat_timeout: float = 15.0):
+    def __init__(
+        self,
+        base_url: str,
+        task_id: str,
+        max_retries: int = 3,
+        backoff_factor: float = 1.0,
+        timeout: int = 30,
+        heartbeat_timeout: float = 15.0,
+    ) -> None:
         """
         Args:
             base_url: Server base URL (e.g. http://localhost:8080)
@@ -840,13 +861,13 @@ class SSEStream:
             timeout: HTTP connection timeout in seconds
             heartbeat_timeout: Seconds without data before yielding timeout event
         """
-        self.url = base_url.rstrip("/") + f"/stream/{task_id}"
-        self.max_retries = max_retries
-        self.backoff_factor = backoff_factor
-        self.timeout = timeout
-        self.heartbeat_timeout = heartbeat_timeout
+        self.url: str = base_url.rstrip("/") + f"/stream/{task_id}"
+        self.max_retries: int = max_retries
+        self.backoff_factor: float = backoff_factor
+        self.timeout: int = timeout
+        self.heartbeat_timeout: float = heartbeat_timeout
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Tuple[str, Any]]:
         """Iterate over (event_type, data_dict) tuples from the SSE stream."""
         last_activity = time.monotonic()
         retries = 0
@@ -927,10 +948,10 @@ class SSEStream:
                     return
 
     @staticmethod
-    def _parse(raw: bytes):
+    def _parse(raw: bytes) -> Optional[Tuple[str, dict]]:
         """Parse a single SSE message into (event_type, data_dict) or None."""
         event_type = "message"
-        data_str = None
+        data_str: Optional[str] = None
         for line in raw.decode("utf-8").split("\n"):
             if line.startswith("event: "):
                 event_type = line[7:].strip()
@@ -954,7 +975,7 @@ def _is_retryable_status(status: int) -> bool:
 
 def _backoff_wait(attempt: int, factor: float) -> None:
     """Sleep with exponential backoff, capped at 30 seconds."""
-    delay = factor * (2 ** (attempt - 1))
+    delay: float = factor * (2 ** (attempt - 1))
     time.sleep(min(delay, 30.0))
 
 

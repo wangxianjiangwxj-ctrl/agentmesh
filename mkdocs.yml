@@ -13,6 +13,7 @@ nav:
 - API文档:
   - SDK: api/sdk.md
   - A2A适配器: api/adapter.md
+  - A2A Test Server: a2a-test-server.md
 - API Reference (自动生成):
   - 概述: api-reference/index.md
   - Trace: api-reference/trace.md
