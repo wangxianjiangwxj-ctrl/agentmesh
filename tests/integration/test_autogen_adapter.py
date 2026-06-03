@@ -16,6 +16,11 @@ Usage:
 Reference: research/phase13-integration-plan.md — Task 2
 """
 
+import json
+import os
+import subprocess
+import sys
+import time
 import unittest
 from typing import Optional
 from unittest import mock
@@ -459,6 +464,281 @@ class TestAutoGenIntegrationScenarios(unittest.TestCase):
     def test_autogen_conversation_history(self) -> None:
         """Retrieve full conversation history after a multi-turn discussion."""
         raise NotImplementedError("Implement with real AutoGen adapter")
+
+
+# ---------------------------------------------------------------------------
+# Run directly
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Real Server Integration Tests
+# ---------------------------------------------------------------------------
+
+class TestAutoGenRealServerIntegration(unittest.TestCase):
+    """AutoGen adapter operations tested against a real A2A Server.
+
+    These tests verify that the operations an AutoGen adapter would perform
+    (send messages, receive messages, manage conversations, agent lifecycle)
+    work correctly against a real A2A Server using HttpProvider.
+
+    Note: The concrete AutoGenAdapter uses /api/v1/ endpoint paths which
+    differ from the root-level server endpoints. These tests validate the
+    protocol-level operations that underpin adapter functionality.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls._server_port = int(os.environ.get("A2A_SERVER_PORT", "8089"))
+        cls.server_url = f"http://localhost:{cls._server_port}"
+
+        import urllib.request, urllib.error
+
+        # Try to detect an already-running server
+        for _ in range(5):
+            try:
+                req = urllib.request.Request(
+                    f"http://localhost:{cls._server_port}/ping", method="GET"
+                )
+                with urllib.request.urlopen(req, timeout=2):
+                    cls._server_proc = None
+                    break
+            except Exception:
+                pass
+
+            if not hasattr(cls, "_server_proc") or cls._server_proc is None:
+                _repo_root = os.path.normpath(
+                    os.path.join(os.path.dirname(__file__), "..", "..")
+                )
+                _server_script = os.path.join(
+                    _repo_root, "agentmesh", "a2a_server.py"
+                )
+                cls._server_proc = subprocess.Popen(
+                    [sys.executable, _server_script, "server", "--port", str(cls._server_port)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+
+            time.sleep(1.0)
+        else:
+            # Final check
+            try:
+                req = urllib.request.Request(
+                    f"http://localhost:{cls._server_port}/ping", method="GET"
+                )
+                with urllib.request.urlopen(req, timeout=2):
+                    pass
+            except Exception as exc:
+                raise RuntimeError(
+                    f"A2A Server failed to start on :{cls._server_port}: {exc}"
+                )
+
+        from agentmesh.a2a_server import HttpProvider
+        cls.client = HttpProvider(cls.server_url, "autogen-real-adapter-test")
+
+    @classmethod
+    def tearDownClass(cls):
+        if hasattr(cls, "_server_proc") and cls._server_proc and cls._server_proc.poll() is None:
+            cls._server_proc.terminate()
+            try:
+                cls._server_proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                cls._server_proc.kill()
+                cls._server_proc.wait(timeout=3)
+            time.sleep(0.5)  # Let port drain
+
+    def setUp(self):
+        self.task_id_base = f"autogen_real_{int(time.time() * 1000)}"
+
+    # ------------------------------------------------------------------
+    # Test 1: Adapter-level message send through real server
+    # ------------------------------------------------------------------
+
+    def test_send_message_via_real_server(self):
+        """Simulate sending a text message through the real A2A Server.
+
+        An AutoGen adapter sends a message by creating an A2A task with
+        structured payload: sender, receiver, content, message type.
+        """
+        task_id = f"{self.task_id_base}_send_msg"
+        msg_payload = {
+            "type": "text",
+            "content": "Hello from AutoGen agent",
+            "sender": "autogen_sender_01",
+            "receiver": "autogen_receiver_01",
+            "message_type": "text",
+        }
+        task = {
+            "id": task_id,
+            "status": {"state": "submitted"},
+            "payload": msg_payload,
+            "metadata": {
+                "conversation_id": f"conv_{task_id}",
+                "sender": "autogen_sender_01",
+                "receiver": "autogen_receiver_01",
+            },
+        }
+        r = self.client.send_message(task)
+        self.assertTrue(r.success, f"Failed to send message: {r.error}")
+        self.assertEqual(r.task_state, "submitted")
+
+        # Verify payload stored intact
+        r2 = self.client.get_task(task_id)
+        self.assertTrue(r2.success)
+        stored = r2.data["payload"]
+        self.assertEqual(stored["content"], "Hello from AutoGen agent")
+        self.assertEqual(stored["sender"], "autogen_sender_01")
+        self.assertEqual(stored["message_type"], "text")
+
+    # ------------------------------------------------------------------
+    # Test 2: Adapter-level message receive through real server
+    # ------------------------------------------------------------------
+
+    def test_receive_message_via_real_server(self):
+        """Simulate receiving a message through the real A2A Server.
+
+        Send a message as one agent, then retrieve it as another.
+        This validates the adapter's send_message / receive_message flow.
+        """
+        task_id = f"{self.task_id_base}_receive_msg"
+        msg_payload = {
+            "type": "data",
+            "content": {"results": [1, 2, 3], "status": "ok"},
+            "sender": "autogen_sender_02",
+            "receiver": "autogen_receiver_02",
+            "message_type": "data",
+        }
+        task = {
+            "id": task_id,
+            "status": {"state": "submitted"},
+            "payload": msg_payload,
+        }
+
+        # Sender sends
+        r_send = self.client.send_message(task)
+        self.assertTrue(r_send.success)
+
+        # Receiver retrieves
+        r_recv = self.client.get_task(task_id)
+        self.assertTrue(r_recv.success)
+        self.assertEqual(r_recv.data["payload"]["receiver"], "autogen_receiver_02")
+        self.assertEqual(r_recv.data["payload"]["content"]["status"], "ok")
+
+    # ------------------------------------------------------------------
+    # Test 3: GroupChat-like multi-agent communication
+    # ------------------------------------------------------------------
+
+    def test_multi_agent_message_flow(self):
+        """Simulate a GroupChat-like flow where multiple AutoGen agents
+        exchange messages through the A2A Server.
+        """
+        # Agent A sends a task
+        task_a_id = f"{self.task_id_base}_group_a"
+        task_a = {
+            "id": task_a_id,
+            "status": {"state": "submitted"},
+            "payload": {
+                "type": "text",
+                "content": "Agent A: Initial analysis request",
+                "sender": "autogen_agent_a",
+                "receiver": "autogen_agent_b",
+                "round": 1,
+            },
+        }
+        r_a = self.client.send_message(task_a)
+        self.assertTrue(r_a.success)
+
+        # Agent B retrieves and responds
+        r_b_get = self.client.get_task(task_a_id)
+        self.assertTrue(r_b_get.success)
+        self.assertEqual(r_b_get.data["payload"]["sender"], "autogen_agent_a")
+
+        task_b_id = f"{self.task_id_base}_group_b"
+        task_b = {
+            "id": task_b_id,
+            "status": {"state": "submitted"},
+            "payload": {
+                "type": "text",
+                "content": "Agent B: Response with findings",
+                "sender": "autogen_agent_b",
+                "receiver": "autogen_agent_a",
+                "round": 2,
+            },
+        }
+        r_b = self.client.send_message(task_b)
+        self.assertTrue(r_b.success)
+
+        # Verify both messages are stored independently
+        r_v1 = self.client.get_task(task_a_id)
+        r_v2 = self.client.get_task(task_b_id)
+        self.assertTrue(r_v1.success)
+        self.assertTrue(r_v2.success)
+        self.assertEqual(r_v1.data["payload"]["round"], 1)
+        self.assertEqual(r_v2.data["payload"]["round"], 2)
+
+    # ------------------------------------------------------------------
+    # Test 4: Message with conversation tracking
+    # ------------------------------------------------------------------
+
+    def test_conversation_tracking_via_metadata(self):
+        """Messages in a conversation track conversation_id via metadata.
+
+        This simulates AutoGen adapter's conversation management where
+        multiple messages belong to the same conversation.
+        """
+        conv_id = f"autogen_conv_{int(time.time() * 1000)}"
+        messages = []
+        for i in range(3):
+            tid = f"{self.task_id_base}_conv_{i}"
+            task = {
+                "id": tid,
+                "status": {"state": "submitted"},
+                "payload": {
+                    "type": "text",
+                    "content": f"Message {i} in conversation",
+                    "sender": f"autogen_agent_{i}",
+                    "receiver": f"autogen_agent_{(i + 1) % 3}",
+                },
+                "metadata": {
+                    "conversation_id": conv_id,
+                    "turn": i,
+                },
+            }
+            r = self.client.send_message(task)
+            self.assertTrue(r.success)
+            messages.append(tid)
+
+        # Verify conversation coherence
+        for i, tid in enumerate(messages):
+            r = self.client.get_task(tid)
+            self.assertTrue(r.success)
+            self.assertEqual(
+                r.data["metadata"]["conversation_id"],
+                conv_id,
+                f"Message {i} has wrong conversation_id",
+            )
+            self.assertEqual(
+                r.data["metadata"]["turn"],
+                i,
+                f"Message {i} has wrong turn",
+            )
+
+    # ------------------------------------------------------------------
+    # Test 5: Register agents (adapter's server agent registration)
+    # ------------------------------------------------------------------
+
+    def test_register_autogen_agents_on_server(self):
+        """Register AutoGen-style agents on the real server."""
+        agents = [
+            ("autogen_assistant", ["conversation", "analysis"]),
+            ("autogen_user_proxy", ["user_input", "execution"]),
+            ("autogen_critic", ["review", "evaluation"]),
+        ]
+        for name, skills in agents:
+            r = self.client.register_agent(name, skills)
+            self.assertTrue(
+                r.success,
+                f"Failed to register AutoGen agent '{name}': {r.error}",
+            )
 
 
 # ---------------------------------------------------------------------------

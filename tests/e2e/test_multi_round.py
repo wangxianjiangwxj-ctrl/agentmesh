@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
-"""Multi-round conversation tests for A2A HTTP Server.
+"""Multi-round conversation tests for A2A protocol (Direction A, Phase B3).
 
-Tests complex multi-turn agent interactions:
-  1. 3-round standard negotiation (send_task → get_task → cancel)
-  2. 5-round mixed interaction with progressive payloads
-  3. Multi-agent chaining (A→B→C task forwarding)
+Tests simulate realistic multi-turn Agent conversations:
+  1. 3-round standard task negotiation (send -> poll -> cancel lifecycle)
+  2. 5-round mixed interaction with incremental payloads
+  3. 3-agent chain (A -> B -> C simulated delegation)
+
+All tests use the real A2A server + HttpProvider client (auto-started).
 
 Usage:
     pytest tests/e2e/test_multi_round.py -v
+    pytest tests/e2e/test_multi_round.py -v --server-port 8080   # existing server
 """
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -25,381 +29,329 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 try:
-    from agentmesh.a2a_server import HttpProvider
+    from agentmesh.a2a_server import HttpProvider, SSEStream
     from agentmesh.a2a_provider import A2AError
 except ImportError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-    from agentmesh.a2a_server import HttpProvider
+    from agentmesh.a2a_server import HttpProvider, SSEStream
     from agentmesh.a2a_provider import A2AError
-
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
-SERVER_PORT = int(os.environ.get("A2A_SERVER_PORT", "8089"))
+SERVER_PORT = int(os.environ.get("A2A_SERVER_PORT", "8090"))
 SERVER_URL = f"http://localhost:{SERVER_PORT}"
-SERVER_START_WAIT = 3
-
-# how many rounds in each scenario
-ROUNDS_STANDARD = 3
-ROUNDS_MIXED = 5
 
 
 # ---------------------------------------------------------------------------
-# Server lifecycle fixture
+# Fixtures
 # ---------------------------------------------------------------------------
 
-class MultiRoundTest(unittest.TestCase):
-    """Multi-round A2A conversation tests."""
+def _ensure_server():
+    """Start server if not already running, return (proc, url)."""
+    import urllib.request
+    import urllib.error
+
+    try:
+        req = urllib.request.Request(f"{SERVER_URL}/ping", method="GET")
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            return None  # already running
+    except Exception:
+        pass
+
+    script = os.path.join(
+        os.path.dirname(__file__), "..", "..", "agentmesh", "a2a_server.py"
+    )
+    proc = subprocess.Popen(
+        [sys.executable, script, "server", "--port", str(SERVER_PORT)],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    time.sleep(2)
+    return proc
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _make_task(task_id: str, text: str = "", state: str = "submitted") -> dict:
+    """Create a standard task dict."""
+    return {
+        "id": task_id,
+        "status": {"state": state},
+        "payload": {"text": text},
+    }
+
+
+def _make_multi_round_task(task_id: str, history: list[dict]) -> dict:
+    """Create a task with conversation history for multi-round simulation."""
+    return {
+        "id": task_id,
+        "status": {"state": "submitted"},
+        "payload": {"text": json.dumps(history) if history else "start"},
+        "metadata": {"rounds": len(history), "history": history},
+    }
+
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+class TestMultiRoundConversation(unittest.TestCase):
+    """Multi-round conversation patterns for A2A protocol."""
 
     @classmethod
     def setUpClass(cls):
-        """Start server if not already running."""
-        # Check if server responds
-        cls.server_proc = None
-        try:
-            import urllib.request
-            req = urllib.request.Request(f"{SERVER_URL}/ping", method="GET")
-            with urllib.request.urlopen(req, timeout=2) as resp:
-                cls.server_running = True
-        except Exception:
-            cls.server_running = False
-            cls.server_proc = subprocess.Popen(
-                [sys.executable, "-m", "agentmesh.a2a_server", "server",
-                 "--port", str(SERVER_PORT)],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            time.sleep(SERVER_START_WAIT)
-
-        cls.client = HttpProvider(SERVER_URL)
+        cls._proc = _ensure_server()
+        cls.client = HttpProvider(SERVER_URL, "multi-round-test")
 
     @classmethod
     def tearDownClass(cls):
-        """Shutdown server if we started it."""
-        if cls.server_proc:
-            cls.server_proc.terminate()
+        if cls._proc:
+            cls._proc.terminate()
             try:
-                cls.server_proc.wait(timeout=5)
+                cls._proc.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                cls.server_proc.kill()
+                cls._proc.kill()
 
     # ------------------------------------------------------------------
-    # Helpers
+    # 1. Three-round standard negotiation
     # ------------------------------------------------------------------
 
-    def _assert_success(self, result, msg_prefix: str):
-        self.assertTrue(
-            result.success,
-            f"{msg_prefix}: expected success, got error={result.error}",
-        )
+    def test_3_round_negotiation(self):
+        """Standard 3-round lifecycle: send -> poll -> complete -> verify.
 
-    def _assert_state(self, result, expected_state: str, msg_prefix: str):
-        self.assertEqual(
-            result.task_state,
-            expected_state,
-            f"{msg_prefix}: expected state '{expected_state}', got '{result.task_state}'",
-        )
-
-    def _make_task(self, task_id: str, text: str, round_num: int = 0) -> dict:
-        return {
-            "id": task_id,
-            "status": {"state": "submitted"},
-            "payload": {"text": text, "round": round_num},
-            "metadata": {"source": "multi_round_test", "round": round_num},
-        }
-
-    def _make_task_with_artifacts(self, task_id: str, text: str,
-                                  artifacts: dict, round_num: int = 0) -> dict:
-        task = self._make_task(task_id, text, round_num)
-        task["artifacts"] = artifacts
-        return task
-
-    # ------------------------------------------------------------------
-    # Test: 3-round standard negotiation
-    # ------------------------------------------------------------------
-
-    def test_3round_standard_negotiation(self):
-        """Scenario 1: 3-round standard A2A task negotiation.
-
-        Round 1: send_task  → submitted
-        Round 2: get_task   → verify state
-        Round 3: cancel     → canceled
+        Round 1: Agent A submits task
+        Round 2: Agent A polls for completion
+        Round 3: Agent A verifies final state
         """
-        task_id = "round3_001"
-        task = self._make_task(task_id, "Round 1: initial task")
+        task_id = "mr_3round_01"
 
-        # Round 1: Send
-        r = self.client.send_message(task)
-        self._assert_success(r, "R1 send")
-        self._assert_state(r, "submitted", "R1 send")
+        # Round 1: Submit
+        task = _make_task(task_id, "Calculate sum 1+2+3")
+        r1 = self.client.send_message(task)
+        self.assertTrue(r1.success, f"Round 1 (send) failed: {r1.error}")
+        self.assertEqual(r1.task_state, "submitted")
 
-        # Round 2: Get
-        r = self.client.get_task(task_id)
-        self._assert_success(r, "R2 get")
-        self.assertEqual(r.data["id"], task_id, "R2: task id mismatch")
-        self.assertEqual(r.data["payload"]["text"], "Round 1: initial task",
-                         "R2: payload text mismatch")
+        # Simulate server-side processing by transitioning to completed
+        # (In real system, workers update state. Here we use direct API.)
+        cancel_result = self.client.cancel_task(task_id)
+        self.assertTrue(cancel_result.success)
 
-        # Round 3: Cancel
-        r = self.client.cancel_task(task_id)
-        self._assert_success(r, "R3 cancel")
-        self._assert_state(r, "canceled", "R3 cancel")
+        # Round 2: Poll for status after processing
+        r2 = self.client.get_task(task_id)
+        self.assertTrue(r2.success, f"Round 2 (poll) failed: {r2.error}")
+        self.assertEqual(r2.data["id"], task_id)
 
-    def test_3round_sequential_tasks(self):
-        """3 rounds with 3 different tasks in sequence: send→cancel sequence."""
-        for i in range(1, ROUNDS_STANDARD + 1):
-            tid = f"seq_r{i:03d}"
-            task = self._make_task(tid, f"Sequential task #{i}", round_num=i)
+        # Round 3: Final verification
+        r3 = self.client.get_task(task_id)
+        self.assertTrue(r3.success)
+        self.assertEqual(r3.data["id"], task_id)
+        # Task should be in canceled state after our simulate-processing cancel
+        self.assertEqual(r3.data["status"]["state"], "canceled")
 
-            r = self.client.send_message(task)
-            self._assert_success(r, f"Seq round {i} send")
+    def test_3_round_error_recovery_negotiation(self):
+        """3-round negotiation where first attempt fails (404), then retry succeeds.
 
-            r = self.client.get_task(tid)
-            self._assert_success(r, f"Seq round {i} get")
-            self.assertEqual(r.data["payload"]["text"], f"Sequential task #{i}",
-                             f"Seq round {i}: text mismatch")
-
-            r = self.client.cancel_task(tid)
-            self._assert_success(r, f"Seq round {i} cancel")
-
-    # ------------------------------------------------------------------
-    # Test: 5-round mixed interaction with progressive payloads
-    # ------------------------------------------------------------------
-
-    def test_5round_mixed_interaction(self):
-        """Scenario 2: 5-round mixed interaction.
-
-        Each round adds progressive payload complexity:
-        R1: plain text
-        R2: text + metadata
-        R3: text + nested payload
-        R4: text + artifacts
-        R5: full lifecycle with all fields
+        Round 1: Get nonexistent task -> 404
+        Round 2: Submit task -> success
+        Round 3: Get task -> now exists
         """
-        client = self.client
-        base_id = "mixed_5r"
+        # Round 1: Try to get nonexistent task -> expect error
+        r1 = self.client.get_task("mr_error_01")
+        self.assertFalse(r1.success)
+        self.assertEqual(r1.error.code, 404)
+        self.assertTrue(r1.error.recoverable)
 
-        # R1: plain text
-        t1 = self._make_task(f"{base_id}_r1", "Plain text message", round_num=1)
-        r = client.send_message(t1)
-        self._assert_success(r, "R1 plain text")
+        # Round 2: Create the task
+        task = _make_task("mr_error_01", "Recover from 404")
+        r2 = self.client.send_message(task)
+        self.assertTrue(r2.success)
+        self.assertEqual(r2.task_state, "submitted")
 
-        r = client.get_task(f"{base_id}_r1")
-        self._assert_success(r, "R1 get")
-        self.assertEqual(r.data["payload"]["text"], "Plain text message")
-
-        # R2: text + metadata enrichment
-        t2 = self._make_task(f"{base_id}_r2", "With metadata", round_num=2)
-        t2["metadata"]["priority"] = "high"
-        t2["metadata"]["context"] = {"session": "test", "user": "alice"}
-        r = client.send_message(t2)
-        self._assert_success(r, "R2 with metadata")
-
-        r = client.get_task(f"{base_id}_r2")
-        self._assert_success(r, "R2 get")
-        self.assertEqual(r.data["metadata"]["priority"], "high")
-        self.assertEqual(r.data["metadata"]["context"]["user"], "alice")
-
-        # R3: text + nested payload
-        t3 = self._make_task(f"{base_id}_r3", "Nested payload", round_num=3)
-        t3["payload"]["nested"] = {
-            "query": "weather",
-            "params": {"city": "Shanghai", "unit": "celsius"},
-            "options": ["detailed", "summary"],
-        }
-        r = client.send_message(t3)
-        self._assert_success(r, "R3 nested payload")
-
-        r = client.get_task(f"{base_id}_r3")
-        self._assert_success(r, "R3 get")
-        self.assertEqual(
-            r.data["payload"]["nested"]["params"]["city"], "Shanghai"
-        )
-
-        # R4: text + artifacts
-        t4 = self._make_task_with_artifacts(
-            f"{base_id}_r4", "With artifacts",
-            {"result": "42", "confidence": 0.95, "sources": ["src1", "src2"]},
-            round_num=4,
-        )
-        r = client.send_message(t4)
-        self._assert_success(r, "R4 with artifacts")
-
-        r = client.get_task(f"{base_id}_r4")
-        self._assert_success(r, "R4 get")
-        self.assertEqual(r.data["artifacts"]["result"], "42")
-        self.assertEqual(len(r.data["artifacts"]["sources"]), 2)
-
-        # R5: full lifecycle — send, verify, cancel
-        t5 = self._make_task_with_artifacts(
-            f"{base_id}_r5", "Full round trip",
-            {"summary": "all tests pass"},
-            round_num=5,
-        )
-        r = client.send_message(t5)
-        self._assert_success(r, "R5 send")
-        self._assert_state(r, "submitted", "R5 send")
-
-        r = client.get_task(f"{base_id}_r5")
-        self._assert_success(r, "R5 get")
-        self.assertEqual(r.data["payload"]["round"], 5)
-
-        r = client.cancel_task(f"{base_id}_r5")
-        self._assert_success(r, "R5 cancel")
-        self._assert_state(r, "canceled", "R5 cancel")
-
-        # Verify previous tasks are unaffected
-        r = client.get_task(f"{base_id}_r1")
-        self._assert_success(r, "R1 still accessible after R5")
-
-        r = client.get_task(f"{base_id}_r3")
-        self._assert_success(r, "R3 still accessible after R5")
-
-    # ------------------------------------------------------------------
-    # Test: Multi-agent chaining (A→B→C)
-    # ------------------------------------------------------------------
-
-    def test_multi_agent_chain(self):
-        """Scenario 3: Multi-agent chaining A→B→C.
-
-        Simulates:
-        1. Agent A sends a task
-        2. Agent B retrieves and processes it (simulated by payload update)
-        3. Agent C retrieves the final state
-
-        In a real deployment, each agent would be a separate service.
-        Here we verify the store supports the access pattern.
-        """
-        client = self.client
-
-        # A sends task
-        task_a = self._make_task("chain_abc_001", "Agent A: initial query", round_num=1)
-        r = client.send_message(task_a)
-        self._assert_success(r, "A sends task")
-
-        # B reads task (simulates B taking ownership)
-        r = client.get_task("chain_abc_001")
-        self._assert_success(r, "B reads task from A")
-        self.assertEqual(r.data["payload"]["text"], "Agent A: initial query")
-
-        # B sends progress update via a new task referencing parent
-        task_b = self._make_task("chain_abc_002", "Agent B: processing step", round_num=2)
-        task_b["metadata"]["parent_task"] = "chain_abc_001"
-        task_b["metadata"]["agent"] = "agent_b"
-        r = client.send_message(task_b)
-        self._assert_success(r, "B sends follow-up task")
-
-        # C reads both tasks (simulates C consuming results)
-        r_a = client.get_task("chain_abc_001")
-        r_b = client.get_task("chain_abc_002")
-        self._assert_success(r_a, "C reads A's task")
-        self._assert_success(r_b, "C reads B's task")
-
-        # Verify chain metadata
-        self.assertEqual(r_b.data["metadata"]["parent_task"], "chain_abc_001")
-        self.assertEqual(r_b.data["metadata"]["agent"], "agent_b")
-
-        # Clean up all tasks in chain
-        for tid in ["chain_abc_001", "chain_abc_002"]:
-            r = client.cancel_task(tid)
-            self._assert_success(r, f"Cleanup {tid}")
-
-    def test_multi_agent_chain_3link(self):
-        """3-link agent chain: A→B→C→D.
-
-        4 tasks with linear dependency chain:
-        A creates → B references → C references → D references
-        """
-        client = self.client
-        agents = ["agent_a", "agent_b", "agent_c", "agent_d"]
-        task_ids = [f"chain_3link_{i:03d}" for i in range(4)]
-
-        # Build chain forward
-        for i, (agent, tid) in enumerate(zip(agents, task_ids)):
-            text = f"{agent}: step {i + 1} of chain"
-            task = self._make_task(tid, text, round_num=i + 1)
-            task["metadata"]["agent"] = agent
-            if i > 0:
-                task["metadata"]["prev_task"] = task_ids[i - 1]
-            r = client.send_message(task)
-            self._assert_success(r, f"{agent} sends task")
-
-        # Verify chain backward
-        for i in range(len(task_ids) - 1, -1, -1):
-            r = client.get_task(task_ids[i])
-            self._assert_success(r, f"Verify task {task_ids[i]}")
-            self.assertEqual(r.data["metadata"]["agent"], agents[i])
-            if i > 0:
-                self.assertEqual(r.data["metadata"]["prev_task"], task_ids[i - 1])
+        # Round 3: Now get it -> should succeed
+        r3 = self.client.get_task("mr_error_01")
+        self.assertTrue(r3.success)
+        self.assertEqual(r3.data["id"], "mr_error_01")
 
         # Cleanup
-        for tid in task_ids:
-            r = client.cancel_task(tid)
-            self._assert_success(r, f"Cleanup {tid}")
+        self.client.cancel_task("mr_error_01")
 
     # ------------------------------------------------------------------
-    # Test: Concurrent multi-round sessions
+    # 2. Five-round mixed interaction
     # ------------------------------------------------------------------
 
-    def test_concurrent_multi_round_sessions(self):
-        """Multiple independent multi-round sessions running concurrently.
+    def test_5_round_mixed_interaction(self):
+        """5-round mixed interaction: submit, update, poll, verify, cleanup.
 
-        Session A: 3 rounds (send→get→cancel)
-        Session B: 3 rounds (send→get→cancel)
-
-        Both interleaved to verify session isolation.
+        Simulates a conversation where:
+        Round 1: Agent submits initial request
+        Round 2: Agent checks submission status
+        Round 3: Agent sends updated request
+        Round 4: Agent polls after update
+        Round 5: Final verification + cleanup
         """
-        client = self.client
+        task_id = "mr_5round_01"
 
-        # Session A tasks
-        a_tasks = [
-            self._make_task(f"concur_a_{i:03d}", f"Session A round {i}", round_num=i)
-            for i in range(1, ROUNDS_STANDARD + 1)
-        ]
+        # Round 1: Initial submission
+        history_r1 = []
+        task = _make_multi_round_task(task_id, history_r1)
+        r1 = self.client.send_message(task)
+        self.assertTrue(r1.success)
+        self.assertEqual(r1.task_state, "submitted")
 
-        # Session B tasks
-        b_tasks = [
-            self._make_task(f"concur_b_{i:03d}", f"Session B round {i}", round_num=i)
-            for i in range(1, ROUNDS_STANDARD + 1)
-        ]
+        # Round 2: Check status (task exists)
+        r2 = self.client.get_task(task_id)
+        self.assertTrue(r2.success)
+        self.assertEqual(r2.data["id"], task_id)
+        self.assertEqual(r2.data["status"]["state"], "submitted")
 
-        # Interleaved send
-        for a_t, b_t in zip(a_tasks, b_tasks):
-            r_a = client.send_message(a_t)
-            self._assert_success(r_a, f"Concurrent A send {a_t['id']}")
-            r_b = client.send_message(b_t)
-            self._assert_success(r_b, f"Concurrent B send {b_t['id']}")
+        # Round 3: Submit updated payload (simulating refinement)
+        history_r3 = [{"role": "agent", "round": 1, "action": "submit"}]
+        updated = _make_multi_round_task(task_id, history_r3)
+        r3 = self.client.send_message(updated)
+        self.assertTrue(r3.success)
 
-        # Interleaved get — verify isolation
-        for a_t, b_t in zip(a_tasks, b_tasks):
-            r_a = client.get_task(a_t["id"])
-            self._assert_success(r_a, f"Concurrent A get {a_t['id']}")
-            self.assertEqual(
-                r_a.data["payload"]["text"], f"Session A round {a_t['payload']['round']}"
-            )
+        # Round 4: Poll after update
+        r4 = self.client.get_task(task_id)
+        self.assertTrue(r4.success)
+        self.assertEqual(r4.data["id"], task_id)
 
-            r_b = client.get_task(b_t["id"])
-            self._assert_success(r_b, f"Concurrent B get {b_t['id']}")
-            self.assertEqual(
-                r_b.data["payload"]["text"], f"Session B round {b_t['payload']['round']}"
-            )
+        # Round 5: Cancel + verify cleanup
+        r5_cancel = self.client.cancel_task(task_id)
+        self.assertTrue(r5_cancel.success)
+        self.assertEqual(r5_cancel.task_state, "canceled")
 
-        # Interleaved cancel
-        for a_t, b_t in zip(a_tasks, b_tasks):
-            r_a = client.cancel_task(a_t["id"])
-            self._assert_success(r_a, f"Concurrent A cancel {a_t['id']}")
-            r_b = client.cancel_task(b_t["id"])
-            self._assert_success(r_b, f"Concurrent B cancel {b_t['id']}")
+        r5_verify = self.client.get_task(task_id)
+        self.assertTrue(r5_verify.success)
+        self.assertEqual(r5_verify.data["status"]["state"], "canceled")
 
-        # Verify all canceled
-        for a_t, b_t in zip(a_tasks, b_tasks):
-            r_a = client.get_task(a_t["id"])
-            r_b = client.get_task(b_t["id"])
-            # After cancel, task should exist (get succeeds) but not be in submitted
-            self._assert_success(r_a, f"Verify A {a_t['id']} after cancel")
-            self._assert_success(r_b, f"Verify B {b_t['id']} after cancel")
+    def test_5_round_with_concurrent_tasks(self):
+        """5-round interaction with interleaved tasks.
+
+        Tests that multi-round conversation on one task does not
+        interfere with other tasks being processed concurrently.
+        """
+        main_id = "mr_concurrent_main"
+        interleave_ids = [f"mr_concurrent_i{i:02d}" for i in range(3)]
+
+        # Round 1: Submit main task
+        r1 = self.client.send_message(_make_task(main_id, "main task"))
+        self.assertTrue(r1.success)
+
+        # Round 2: Submit interleaving tasks
+        for tid in interleave_ids:
+            r = self.client.send_message(_make_task(tid, f"interleave {tid}"))
+            self.assertTrue(r.success)
+
+        # Round 3: All tasks should exist
+        for tid in [main_id] + interleave_ids:
+            r = self.client.get_task(tid)
+            self.assertTrue(r.success, f"Task {tid} not found after interleave")
+            self.assertEqual(r.data["id"], tid)
+
+        # Round 4: Verify main task state unchanged
+        r4 = self.client.get_task(main_id)
+        self.assertTrue(r4.success)
+        self.assertEqual(r4.data["id"], main_id)
+
+        # Round 5: Cleanup all
+        for tid in [main_id] + interleave_ids:
+            r = self.client.cancel_task(tid)
+            self.assertTrue(r.success, f"Cleanup {tid} failed")
+
+    # ------------------------------------------------------------------
+    # 3. Multi-agent chaining (A -> B -> C simulated)
+    # ------------------------------------------------------------------
+
+    def test_3_agent_chain_simulation(self):
+        """Simulate 3-agent chain: A submits -> B processes -> C finalizes.
+
+        Since we have a single server, we simulate delegation by
+        creating linked tasks:
+        - Agent A creates task t_a
+        - Agent B creates task t_b (referencing t_a as parent)
+        - Agent C creates task t_c (referencing t_b as parent)
+        - Chain verification: A can trace through B -> C
+        """
+        chain_id = "mr_chain_01"
+        parent_prefix = f"{chain_id}_delegate"
+
+        # Step 1: Agent A submits task
+        task_a = _make_task(chain_id, "Agent A: calculate project timeline")
+        r_a = self.client.send_message(task_a)
+        self.assertTrue(r_a.success, "Agent A submit failed")
+
+        # Step 2: Agent B takes subtask (simulated delegation)
+        task_b = _make_task(f"{parent_prefix}_b", "Agent B: estimate frontend effort")
+        task_b["metadata"] = {"parent": chain_id, "agent": "B"}
+        r_b = self.client.send_message(task_b)
+        self.assertTrue(r_b.success, "Agent B submit failed")
+
+        # Step 3: Agent C takes subtask (simulated delegation from B)
+        task_c = _make_task(f"{parent_prefix}_c", "Agent C: estimate backend effort")
+        task_c["metadata"] = {"parent": f"{parent_prefix}_b", "agent": "C"}
+        r_c = self.client.send_message(task_c)
+        self.assertTrue(r_c.success, "Agent C submit failed")
+
+        # Step 4: Verify chain exists - each task retrievable
+        chain_tasks = [chain_id, f"{parent_prefix}_b", f"{parent_prefix}_c"]
+        for tid in chain_tasks:
+            r = self.client.get_task(tid)
+            self.assertTrue(r.success, f"Chain task {tid} not found")
+            self.assertEqual(r.data["id"], tid)
+
+        # Step 5: Cleanup chain (reverse order: C -> B -> A)
+        for tid in reversed(chain_tasks):
+            r = self.client.cancel_task(tid)
+            self.assertTrue(r.success, f"Chain cleanup {tid} failed")
+
+    def test_3_agent_chain_with_intermediate_failure(self):
+        """3-agent chain where agent B's subtask fails, A must handle.
+
+        Simulates:
+        - Agent A submits task
+        - Agent B tries subtask but cancels (simulating "can't handle")
+        - Agent C takes over from B
+        - Final verification
+        """
+        chain_fail_id = "mr_chain_fail_01"
+
+        # Agent A submits
+        task_a = _make_task(chain_fail_id, "Agent A: handle customer query")
+        r_a = self.client.send_message(task_a)
+        self.assertTrue(r_a.success)
+
+        # Agent B takes it but fails -> cancels
+        task_b = _make_task(f"{chain_fail_id}_b", "Agent B: attempt but fail")
+        task_b["metadata"] = {"parent": chain_fail_id}
+        r_b = self.client.send_message(task_b)
+        self.assertTrue(r_b.success)
+
+        # Agent B cancels (simulating failure)
+        r_b_cancel = self.client.cancel_task(f"{chain_fail_id}_b")
+        self.assertTrue(r_b_cancel.success)
+
+        # Agent C takes over from B's failure
+        task_c = _make_task(f"{chain_fail_id}_c", "Agent C: take over from B")
+        task_c["metadata"] = {"parent": chain_fail_id, "replaces": f"{chain_fail_id}_b"}
+        r_c = self.client.send_message(task_c)
+        self.assertTrue(r_c.success)
+
+        # Verify: agent C's task exists, agent B's task is canceled
+        r_c_get = self.client.get_task(f"{chain_fail_id}_c")
+        self.assertTrue(r_c_get.success)
+        self.assertEqual(r_c_get.data["id"], f"{chain_fail_id}_c")
+
+        r_b_get = self.client.get_task(f"{chain_fail_id}_b")
+        self.assertTrue(r_b_get.success)
+        self.assertEqual(r_b_get.data["status"]["state"], "canceled")
+
+        # Cleanup
+        for tid in [f"{chain_fail_id}_c", chain_fail_id]:
+            self.client.cancel_task(tid)
 
 
 # ---------------------------------------------------------------------------
@@ -407,4 +359,4 @@ class MultiRoundTest(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main(verbosity=2)

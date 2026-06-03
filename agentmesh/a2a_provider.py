@@ -42,6 +42,17 @@ class A2AError(Exception):
         super().__init__(f"[{code}] {message}")
 
 
+class ProviderError(A2AError):
+    """Provider-level error (e.g. network, config, upstream failure).
+
+    Raised by provider implementations when an external dependency fails.
+    Maps to HTTP 500 by default, or a provider-specific status code.
+    """
+    def __init__(self, code: int = 500, message: str = "Provider error",
+                 recoverable: bool = True):
+        super().__init__(code, message, recoverable)
+
+
 # ============================================================
 # A2A Task State Machine
 # ============================================================
@@ -254,6 +265,139 @@ class A2AFacade:
         if result.success:
             self.task_manager.update_state(task_id, A2ATaskState.CANCELED)
         return result
+
+
+# ============================================================
+# Retry utilities for HTTP requests
+# ============================================================
+
+import functools as _functools
+import random as _random_module
+import time as _time_module
+
+
+def _should_retry_on_status(status_code: int) -> bool:
+    """Return True if the HTTP status code is retryable.
+
+    Retryable: 429 (rate limit), 5xx (server errors).
+    Non-retryable: 4xx (client errors, except 429).
+    """
+    if status_code == 429:
+        return True
+    return 500 <= status_code < 600
+
+
+def _should_retry_on_error(error: BaseException) -> bool:
+    """Return True if the exception type is a network-level error.
+
+    Retryable: ConnectionError, TimeoutError, OSError (DNS, socket).
+    """
+    return isinstance(error, (ConnectionError, TimeoutError, OSError))
+
+
+def _backoff_sleep(attempt: int, backoff_factor: float = 1.0,
+                   max_backoff: float = 30.0) -> None:
+    """Sleep with exponential backoff and jitter.
+
+    delay = min(backoff_factor * 2^(attempt-1), max_backoff)
+    Adds uniform jitter of 0-25%.
+
+    Args:
+        attempt: 1-indexed retry attempt number.
+        backoff_factor: Base multiplier for delay.
+        max_backoff: Maximum delay cap in seconds.
+    """
+    delay = backoff_factor * (2 ** (attempt - 1))
+    delay = min(delay, max_backoff)
+    jitter = delay * _random_module.uniform(0, 0.25)
+    _time_module.sleep(delay + jitter)
+
+
+def with_retry(
+    fn=None,
+    *,
+    max_retries: int = 3,
+    backoff_factor: float = 1.0,
+    max_backoff: float = 30.0,
+    retryable_statuses=None,
+    retry_on_network_error: bool = True,
+):
+    """Decorator that wraps a function with automatic retry logic.
+
+    Can be used with or without arguments::
+
+        @with_retry
+        def my_call(url):
+            ...
+
+        @with_retry(max_retries=5, backoff_factor=2.0)
+        def flaky_call(url):
+            ...
+
+    The wrapped function must return a dict with a ``success`` key.
+    Retries on: 5xx/429 status codes, network-level exceptions.
+    """
+    if retryable_statuses is None:
+        retryable_statuses = {429, 500, 502, 503, 504}
+
+    def decorator(func):
+        @_functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            last_error = None
+            last_result = None
+
+            for attempt in range(1 + max_retries):
+                try:
+                    result = func(*args, **kwargs)
+                except BaseException as exc:
+                    last_error = exc
+                    if (attempt < max_retries
+                            and retry_on_network_error
+                            and _should_retry_on_error(exc)):
+                        _backoff_sleep(attempt + 1, backoff_factor, max_backoff)
+                        continue
+                    raise
+
+                if result.get("success", True):
+                    return result
+
+                last_result = result
+                error_info = result.get("error", {}) or {}
+                if isinstance(error_info, dict):
+                    status_code = error_info.get("code", 0)
+                    if isinstance(status_code, str):
+                        status_code = 500
+                elif hasattr(error_info, "code"):
+                    status_code = error_info.code
+                else:
+                    status_code = 500
+
+                if attempt < max_retries and _should_retry_on_status(status_code):
+                    recoverable = False
+                    if isinstance(error_info, dict):
+                        recoverable = error_info.get("recoverable", False)
+                    elif hasattr(error_info, "recoverable"):
+                        recoverable = error_info.recoverable
+
+                    if recoverable or status_code >= 500:
+                        _backoff_sleep(attempt + 1, backoff_factor, max_backoff)
+                        continue
+
+                return result
+
+            if last_result is not None:
+                return last_result
+            if last_error is not None:
+                raise last_error
+            return {"success": False,
+                    "error": {"code": 503, "message": "Retry exhausted"}}
+
+        return wrapper
+
+    # Allow usage as @with_retry (no parentheses) or @with_retry(...)
+    if fn is not None:
+        return decorator(fn)
+    return decorator
 
 
 # ============================================================
