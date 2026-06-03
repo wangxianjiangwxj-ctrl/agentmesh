@@ -13,7 +13,6 @@ from agentmesh.a2a._trace import (
     with_trace_context,
 )
 
-
 # ======================================================================
 # TraceContext
 # ======================================================================
@@ -345,14 +344,14 @@ class TestEdgeCases:
 
     def test_baggage_encode_decode_roundtrip(self) -> None:
         baggage = {"key1": "val1", "key2": "val2"}
-        from agentmesh.a2a._trace import _encode_baggage, _decode_baggage
+        from agentmesh.a2a._trace import _decode_baggage, _encode_baggage
 
         encoded = _encode_baggage(baggage)
         decoded = _decode_baggage(encoded)
         assert decoded == baggage
 
     def test_baggage_empty(self) -> None:
-        from agentmesh.a2a._trace import _encode_baggage, _decode_baggage
+        from agentmesh.a2a._trace import _decode_baggage, _encode_baggage
 
         assert _encode_baggage({}) == ""
         assert _decode_baggage("") == {}
@@ -360,7 +359,6 @@ class TestEdgeCases:
 
     def test_timer_accuracy(self) -> None:
         """Context manager does not interfere with timing."""
-        import time
 
         start = time.monotonic()
         with with_trace_context():

@@ -12,13 +12,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "agentmes
 
 import pytest
 from a2a_provider import (
-    MemoryProvider,
-    A2AProvider,
-    A2AResult,
     A2AError,
+    A2AFacade,
     A2ATaskManager,
     A2ATaskState,
-    A2AFacade,
+    MemoryProvider,
 )
 
 
@@ -152,7 +150,6 @@ class TestTaskManagerIntegration:
 
     def test_cleanup_expired_tasks(self):
         """TTL-based cleanup removes completed/failed/canceled tasks"""
-        import time
 
         self.mgr.track("keep_me", A2ATaskState.SUBMITTED)
         self.mgr.track("expire_completed", A2ATaskState.WORKING)

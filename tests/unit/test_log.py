@@ -10,9 +10,8 @@ import tempfile
 
 import pytest
 
-from agentmesh.a2a._log import LogLevel, LoggerConfig, StructuredLogger
+from agentmesh.a2a._log import LoggerConfig, LogLevel, StructuredLogger
 from agentmesh.a2a._trace import TraceProvider, with_trace_context
-
 
 # ======================================================================
 # LogLevel

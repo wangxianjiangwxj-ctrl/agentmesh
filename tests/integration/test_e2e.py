@@ -21,8 +21,6 @@ Reference: research/phase13-integration-plan.md — Task 4
 """
 
 import unittest
-from unittest import mock
-
 
 # ---------------------------------------------------------------------------
 # Import guard
@@ -30,13 +28,13 @@ from unittest import mock
 
 try:
     from agentmesh.a2a.integration import (
-        IntegrationTestMatrix,
-        TestScenario,
-        ScenarioResult,
-        IntegrationTestRunner,
-        FrameworkType,
-        TestResult,
         DEFAULT_MATRIX,
+        FrameworkType,
+        IntegrationTestMatrix,
+        IntegrationTestRunner,
+        ScenarioResult,
+        TestResult,
+        TestScenario,
     )
     HAS_INTEGRATION = True
 except ImportError:

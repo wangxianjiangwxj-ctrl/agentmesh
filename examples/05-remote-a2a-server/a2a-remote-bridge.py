@@ -27,14 +27,13 @@ a2a-remote-bridge.py — Agent 连接远程 A2A 服务端点
 import asyncio
 import json
 import time
-import uuid
-import urllib.request
 import urllib.error
+import urllib.request
+import uuid
 from enum import Enum
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Thread
 from typing import Optional
-
 
 # ═══════════════════════════════════════════════════════════════
 # 1. A2A Task 状态枚举
@@ -279,10 +278,10 @@ def start_remote_server(host: str = "localhost", port: int = 18080) -> HTTPServe
     thread = Thread(target=server.serve_forever, daemon=True)
     thread.start()
     print(f"  [A2A Server] 已启动: http://{host}:{port}")
-    print(f"  [A2A Server] 端点: ")
-    print(f"    GET  /.well-known/agent.json  — AgentCard 发现")
-    print(f"    POST /tasks/send              — 提交 Task")
-    print(f"    POST /tasks/getTask           — 查询 Task 状态")
+    print("  [A2A Server] 端点: ")
+    print("    GET  /.well-known/agent.json  — AgentCard 发现")
+    print("    POST /tasks/send              — 提交 Task")
+    print("    POST /tasks/getTask           — 查询 Task 状态")
     return server
 
 
@@ -401,7 +400,7 @@ async def main():
     if card:
         print(f"  名称:     {card.get('name', 'unknown')}")
         print(f"  描述:     {card.get('description', 'N/A')[:50]}...")
-        print(f"  能力列表:")
+        print("  能力列表:")
         for skill in card.get("skills", []):
             print(f"    - {skill.get('name', 'unknown')}: {skill.get('description', '')}")
     else:
@@ -505,15 +504,15 @@ async def main():
                 if part.get("type") == "text":
                     report_text += part.get("text", "")
 
-        print(f"  SUCCESS: 远程服务返回分析结果")
+        print("  SUCCESS: 远程服务返回分析结果")
         print(f"  Task ID:      {task_id}")
         print(f"  状态:         {final_state}")
         print(f"  耗时:         {total_elapsed:.0f} ms")
         print(f"  轮询次数:     {poll_count}")
-        print(f"\n远程分析结果:")
+        print("\n远程分析结果:")
         print(report_text)
     elif final_state == "FAILED":
-        print(f"  FAILURE: 远程服务执行失败")
+        print("  FAILURE: 远程服务执行失败")
         print(f"  Task ID: {task_id}")
     else:
         print(f"  WARNING: Task 在 {max_polls * poll_interval:.0f}s 内未完成")

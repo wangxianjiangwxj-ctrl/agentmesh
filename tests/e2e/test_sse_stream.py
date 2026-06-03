@@ -13,7 +13,6 @@ Requires:
 
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 import sys
@@ -23,12 +22,11 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 try:
-    from agentmesh.a2a_server import HttpProvider, SSEStream
     from agentmesh.a2a_provider import A2AError
+    from agentmesh.a2a_server import HttpProvider, SSEStream
 except ImportError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
     from agentmesh.a2a_server import HttpProvider, SSEStream
-    from agentmesh.a2a_provider import A2AError
 
 
 SERVER_PORT = int(os.environ.get("A2A_SERVER_PORT", "8090"))
@@ -36,8 +34,8 @@ SERVER_URL = f"http://localhost:{SERVER_PORT}"
 
 
 def _ensure_server():
-    import urllib.request
     import urllib.error
+    import urllib.request
     try:
         req = urllib.request.Request(f"{SERVER_URL}/ping", method="GET")
         with urllib.request.urlopen(req, timeout=3) as resp:

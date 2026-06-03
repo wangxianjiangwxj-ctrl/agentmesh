@@ -4,14 +4,16 @@ AgentMesh + LangGraph 集成示例
 展示：在LangGraph工作流中使用AgentMesh保真度追踪和贡献度分配
 """
 
-import sys, os
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'agentmesh'))
 # SDK files were moved to GitHub repo; also check skill directory
 sys.path.insert(0, os.path.expanduser('~/.openclaw/skills/agentmesh-protocol/'))
 
-from typing import Dict, Any, TypedDict, List
-from agentmesh_sdk import FidelityTracker, ContributionAllocator, MessageBuilder
+from typing import Dict
 
+from agentmesh_sdk import ContributionAllocator, FidelityTracker, MessageBuilder
 
 # ============================================================
 # LangGraph 节点函数
@@ -20,7 +22,7 @@ from agentmesh_sdk import FidelityTracker, ContributionAllocator, MessageBuilder
 def agent_retrieve(state: Dict) -> Dict:
     """Agent A: 检索信息（模拟）"""
     agent_id = "scout-alpha"
-    
+
     builder = MessageBuilder(agent_id)
     msg = builder.create_task_result(
         task_id=state["task_id"],
@@ -38,7 +40,7 @@ def agent_retrieve(state: Dict) -> Dict:
         confidence=0.85,
         fidelity=0.9,
     )
-    
+
     return {
         **state,
         "last_message_type": "retrieval",
@@ -52,7 +54,7 @@ def agent_retrieve(state: Dict) -> Dict:
 def agent_integrate(state: Dict) -> Dict:
     """Agent B: 整合报告（模拟）"""
     agent_id = "forge-beta"
-    
+
     builder = MessageBuilder(agent_id)
     msg = builder.create_task_result(
         task_id=state["task_id"],
@@ -65,7 +67,7 @@ def agent_integrate(state: Dict) -> Dict:
         confidence=0.78,
         fidelity=0.65,
     )
-    
+
     return {
         **state,
         "last_message_type": "integration",
@@ -79,7 +81,7 @@ def agent_integrate(state: Dict) -> Dict:
 def agent_review(state: Dict) -> Dict:
     """Agent C: 审查评估（模拟）"""
     agent_id = "audit-gamma"
-    
+
     builder = MessageBuilder(agent_id)
     msg = builder.create_quality_review(
         task_id=state["task_id"],
@@ -94,7 +96,7 @@ def agent_review(state: Dict) -> Dict:
         confidence=0.7,
         fidelity=0.8,
     )
-    
+
     return {
         **state,
         "last_message_type": "review",
@@ -111,15 +113,15 @@ def calculate_fidelity(state: Dict) -> Dict:
     tracker.add_step("scout-alpha", 0.9, "检索原始信息")
     tracker.add_step("forge-beta", 0.65, "整合报告")
     tracker.add_step("audit-gamma", 0.8, "审查评估")
-    
+
     allocator = ContributionAllocator()
     allocator.add_claim("scout-alpha", role_weight=1.0, task_completion=1.0, quality_score=8.5)
     allocator.add_claim("forge-beta", role_weight=1.2, task_completion=1.0, quality_score=7.8)
     allocator.add_claim("audit-gamma", role_weight=1.0, task_completion=1.0, quality_score=7.0)
-    
+
     cumulative = tracker.cumulative_fidelity
     shares = allocator.allocate()
-    
+
     return {
         **state,
         "cumulative_fidelity": cumulative,
@@ -138,26 +140,26 @@ def run_langgraph_workflow():
     print("AgentMesh + LangGraph 集成示例")
     print("=" * 60)
     print()
-    
+
     # 初始化状态
     state = {"task_id": "langgraph_demo_001", "messages": []}
-    
+
     # 工作流：A检索 → B整合 → C审查 → 保真度计算
     print("[Step 1] scout-alpha 检索信息...")
     state = agent_retrieve(state)
     print(f"  保真度: {state['fidelity']}")
     print()
-    
+
     print("[Step 2] forge-beta 整合报告...")
     state = agent_integrate(state)
     print(f"  保真度: {state['fidelity']}")
     print()
-    
+
     print("[Step 3] audit-gamma 审查评估...")
     state = agent_review(state)
     print(f"  保真度: {state['fidelity']}")
     print()
-    
+
     # 保真度追踪（AgentMesh差异化能力）
     print("[AgentMesh] 保真度追踪...")
     state = calculate_fidelity(state)
@@ -165,7 +167,7 @@ def run_langgraph_workflow():
     print(f"  警告触发: {state['warning_triggered']}")
     print(f"  贡献度: {state['contribution_shares']}")
     print()
-    
+
     print("=" * 60)
     print("✅ AgentMesh + LangGraph 集成验证通过")
     print("=" * 60)
@@ -173,7 +175,7 @@ def run_langgraph_workflow():
     print("关键差异：LangGraph处理工作流编排")
     print("AgentMesh提供工作流中缺失的：保真度追踪 + 贡献度分配")
     print("两者互补，不是替代关系。")
-    
+
     return state
 
 

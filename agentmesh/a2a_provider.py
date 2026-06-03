@@ -13,8 +13,10 @@ MemoryProvider提供本地内存模拟，HttpProvider连接真实A2A Server。
 ## A2A Result & Error
 ## ============================================================
 
+
 class A2AResult:
     """A2A操作结果封装"""
+
     def __init__(self, success: bool, data=None, error=None, task_state=None):
         self.success = success
         self.data = data
@@ -35,6 +37,7 @@ class A2AResult:
 
 class A2AError(Exception):
     """A2A协议错误"""
+
     def __init__(self, code: int, message: str, recoverable: bool = False):
         self.code = code
         self.message = message
@@ -57,8 +60,10 @@ class ProviderError(A2AError):
 # A2A Task State Machine
 # ============================================================
 
+
 class A2ATaskState:
     """A2A Task状态"""
+
     PENDING = "pending"
     SUBMITTED = "submitted"
     WORKING = "working"
@@ -90,8 +95,13 @@ class A2ATaskManager:
     def __init__(self):
         self._tasks = {}
 
-    def track(self, task_id: str, initial_state: str = A2ATaskState.PENDING,
-              parent_id: str = None, metadata: dict = None):
+    def track(
+        self,
+        task_id: str,
+        initial_state: str = A2ATaskState.PENDING,
+        parent_id: str = None,
+        metadata: dict = None,
+    ):
         if task_id in self._tasks:
             raise A2AError(409, f"Task already tracked: {task_id}")
         self._tasks[task_id] = {
@@ -146,10 +156,11 @@ class A2ATaskManager:
 # A2AProvider — 抽象基类
 # ============================================================
 
+
 class A2AProvider:
     """
     A2A Provider抽象基类
-    
+
     子类必须实现: send_message, get_task, cancel_task
     可选实现: send_streaming, fetch_agent_card, ping
     """
@@ -183,10 +194,11 @@ class A2AProvider:
 # MemoryProvider — 本地内存模拟
 # ============================================================
 
+
 class MemoryProvider(A2AProvider):
     """
     内存Provider：不经过网络，直接内存模拟A2A Server
-    
+
     用于：单进程测试、单元测试、离线开发
     不需要启动外部A2A Server
     """
@@ -230,10 +242,11 @@ class MemoryProvider(A2AProvider):
 # A2AFacade — 统一入口
 # ============================================================
 
+
 class A2AFacade:
     """
     A2A兼容层统一入口
-    
+
     封装 Provider + TaskManager，对外暴露简洁接口。
     自动完成：AgentMesh→A2A转换 → Provider.send → 响应 → A2A→AgentMesh转换
     """
@@ -423,10 +436,10 @@ if __name__ == "__main__":
     task = {"id": "task_001", "status": {"state": "submitted"}, "payload": {}}
     r = mem.send_message(task)
     assert r.success and r.task_state == "submitted"
-    
+
     r = mem.get_task("task_001")
     assert r.success and r.data["id"] == "task_001"
-    
+
     r = mem.cancel_task("task_001")
     assert r.success and r.task_state == "canceled"
     print("  ✅ Send → Get → Cancel 完整生命周期")
@@ -440,7 +453,7 @@ if __name__ == "__main__":
     mgr.update_state("task_001", A2ATaskState.WORKING)
     mgr.update_state("task_001", A2ATaskState.COMPLETED)
     assert mgr.get_task("task_001")["state"] == A2ATaskState.COMPLETED
-    
+
     # 非法转换
     try:
         mgr.update_state("task_001", A2ATaskState.WORKING)
@@ -466,10 +479,10 @@ if __name__ == "__main__":
     task = {"id": "facade_001", "status": {"state": "submitted"}}
     r = facade.send_task(task)
     assert r.success
-    
+
     r = facade.get_task("facade_001")
     assert r.success
-    
+
     r = facade.cancel_task("facade_001")
     assert r.success
     print("  ✅ Facade统一入口正常工作")

@@ -20,14 +20,12 @@ Workflow:
 Reference: research/phase13-integration-plan.md -- Task 1
 """
 
-
 from __future__ import annotations
 
 import abc
 import dataclasses
 import enum
 from typing import Any, Dict, List, Optional, Protocol, TypeVar
-
 
 # ---------------------------------------------------------------------------
 # Type aliases
@@ -42,6 +40,7 @@ CardMetadata = Dict[str, Any]
 # ---------------------------------------------------------------------------
 # Enums & constants
 # ---------------------------------------------------------------------------
+
 
 class CardType(str, enum.Enum):
     """Standard A2A Card types exchanged between agents."""
@@ -66,6 +65,7 @@ class CardStatus(str, enum.Enum):
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclasses.dataclass(frozen=True)
 class A2AToolDef:
@@ -145,6 +145,7 @@ class CardReceiveResult:
 # Protocols (structural typing)
 # ---------------------------------------------------------------------------
 
+
 class CrewAIAgentProtocol(Protocol):
     """Protocol describing a CrewAI Agent-compatible object.
 
@@ -162,6 +163,7 @@ class CrewAIAgentProtocol(Protocol):
 # ---------------------------------------------------------------------------
 # Abstract adapter base
 # ---------------------------------------------------------------------------
+
 
 class CrewAIAdapterBase(abc.ABC):
     """Abstract base class for integrating AgentMesh A2A with CrewAI.
@@ -435,15 +437,15 @@ class CrewAIAdapterBase(abc.ABC):
 import json
 import threading
 import time
-import uuid
 import urllib.error
 import urllib.parse
 import urllib.request
-
+import uuid
 
 # ---------------------------------------------------------------------------
 # Proxy classes (fallback when crewai package is not installed)
 # ---------------------------------------------------------------------------
+
 
 class _CrewAIProxyAgent:
     """Fallback proxy when the crewai package is not installed.
@@ -522,12 +524,14 @@ class _A2AToolProxy:
             timeout_seconds=self._tool_def.timeout_seconds,
         )
 
-        return json.dumps({
-            "card_id": result.card_id,
-            "status": result.status.value,
-            "recipient_agent": result.recipient_agent,
-            "error_message": result.error_message,
-        })
+        return json.dumps(
+            {
+                "card_id": result.card_id,
+                "status": result.status.value,
+                "recipient_agent": result.recipient_agent,
+                "error_message": result.error_message,
+            }
+        )
 
     def __call__(self, recipient_id: str, message: str, **kwargs: Any) -> str:
         """Make the proxy directly callable."""
@@ -537,6 +541,7 @@ class _A2AToolProxy:
 # ---------------------------------------------------------------------------
 # Concrete CrewAI adapter implementation
 # ---------------------------------------------------------------------------
+
 
 class CrewAIAdapter(CrewAIAdapterBase):
     """Concrete CrewAI adapter using HTTP transport to AgentMesh A2A Server.
@@ -631,24 +636,16 @@ class CrewAIAdapter(CrewAIAdapterBase):
                 detail = exc.read().decode("utf-8", errors="replace")
             except Exception:
                 detail = str(exc)
-            raise ValueError(
-                f"HTTP {exc.code} from {method} {url}: {detail}"
-            ) from exc
+            raise ValueError(f"HTTP {exc.code} from {method} {url}: {detail}") from exc
         except urllib.error.URLError as exc:
-            raise ConnectionError(
-                f"Cannot reach {url}: {exc.reason}"
-            ) from exc
+            raise ConnectionError(f"Cannot reach {url}: {exc.reason}") from exc
         except OSError as exc:
-            raise ConnectionError(
-                f"Connection error to {url}: {exc}"
-            ) from exc
+            raise ConnectionError(f"Connection error to {url}: {exc}") from exc
 
     def _ensure_connected(self) -> None:
         """Raise RuntimeError if the adapter is not connected."""
         if not self._connected:
-            raise RuntimeError(
-                "CrewAIAdapter is not connected. Call connect() first."
-            )
+            raise RuntimeError("CrewAIAdapter is not connected. Call connect() first.")
 
     def _parse_card_type(self, value: str) -> CardType:
         """Safely parse a string into a CardType enum member."""
@@ -678,10 +675,7 @@ class CrewAIAdapter(CrewAIAdapterBase):
         # Validate and parse the server URL
         parsed = urllib.parse.urlparse(server_url)
         if not parsed.scheme or not parsed.netloc:
-            raise ValueError(
-                f"Invalid server_url: '{server_url}'. "
-                f"Expected format: http://host:port"
-            )
+            raise ValueError(f"Invalid server_url: '{server_url}'. Expected format: http://host:port")
 
         host = parsed.hostname or "127.0.0.1"
         port = parsed.port or 8080
@@ -697,9 +691,7 @@ class CrewAIAdapter(CrewAIAdapterBase):
         try:
             self._request("GET", "/health", timeout=min(timeout_seconds, 10.0))
         except (ConnectionError, ValueError, OSError) as exc:
-            raise ConnectionError(
-                f"AgentMesh server at {server_url} is not reachable: {exc}"
-            ) from exc
+            raise ConnectionError(f"AgentMesh server at {server_url} is not reachable: {exc}") from exc
 
         latency = (time.monotonic() - start) * 1000.0
 
@@ -728,7 +720,7 @@ class CrewAIAdapter(CrewAIAdapterBase):
             self._connected = False
             agents = dict(self._agents)
             self._agents.clear()
-            tools = dict(self._tools)
+            dict(self._tools)
             self._tools.clear()
 
         # Best-effort server notification
@@ -782,7 +774,7 @@ class CrewAIAdapter(CrewAIAdapterBase):
         # Create or retrieve the A2ATool
         tool_def = A2AToolDef(
             name=config.agentmesh_tool_name,
-            description=f"Send a card through AgentMesh to another agent",
+            description="Send a card through AgentMesh to another agent",
             card_type=CardType.TEXT,
         )
         tool = self.create_a2a_tool(tool_def)
@@ -852,9 +844,7 @@ class CrewAIAdapter(CrewAIAdapterBase):
             # Roll back local registration on server failure
             with self._lock:
                 self._agents.pop(agent_id, None)
-            raise ConnectionError(
-                f"Failed to register agent '{agent_id}' with server: {exc}"
-            ) from exc
+            raise ConnectionError(f"Failed to register agent '{agent_id}' with server: {exc}") from exc
 
     def unregister_agent(self, agent_id: str) -> None:
         """Remove an agent from the AgentMesh server and local state.
@@ -918,10 +908,7 @@ class CrewAIAdapter(CrewAIAdapterBase):
         if metadata is not None:
             request_body["metadata"] = metadata
 
-        eff_timeout = (
-            timeout_seconds if timeout_seconds is not None
-            else self._default_timeout
-        )
+        eff_timeout = timeout_seconds if timeout_seconds is not None else self._default_timeout
 
         try:
             response = self._request(
@@ -972,10 +959,7 @@ class CrewAIAdapter(CrewAIAdapterBase):
         self._ensure_connected()
 
         query_params = urllib.parse.urlencode({"agent_id": agent_id})
-        eff_timeout = (
-            timeout_seconds if timeout_seconds is not None
-            else self._default_timeout
-        )
+        eff_timeout = timeout_seconds if timeout_seconds is not None else self._default_timeout
 
         try:
             response = self._request(
@@ -1016,10 +1000,12 @@ class CrewAIAdapter(CrewAIAdapterBase):
         """
         self._ensure_connected()
 
-        query_params = urllib.parse.urlencode({
-            "agent_id": agent_id,
-            "max_count": max_count,
-        })
+        query_params = urllib.parse.urlencode(
+            {
+                "agent_id": agent_id,
+                "max_count": max_count,
+            }
+        )
 
         try:
             response = self._request(
@@ -1060,11 +1046,7 @@ class CrewAIAdapter(CrewAIAdapterBase):
             sender_agent=str(response.get("sender_id", response.get("sender_agent", ""))),
             card_type=self._parse_card_type(card_type_str),
             payload=dict(response.get("payload", {})),
-            metadata=(
-                dict(response["metadata"])
-                if response.get("metadata") is not None
-                else None
-            ),
+            metadata=(dict(response["metadata"]) if response.get("metadata") is not None else None),
         )
 
     # ------------------------------------------------------------------
@@ -1115,14 +1097,14 @@ class CrewAIAdapter(CrewAIAdapterBase):
             if not isinstance(raw, dict):
                 continue
             try:
-                result.append(A2AToolDef(
-                    name=str(raw.get("name", "")),
-                    description=str(raw.get("description", "")),
-                    card_type=self._parse_card_type(
-                        raw.get("card_type", CardType.TEXT.value)
-                    ),
-                    timeout_seconds=float(raw.get("timeout_seconds", 30.0)),
-                ))
+                result.append(
+                    A2AToolDef(
+                        name=str(raw.get("name", "")),
+                        description=str(raw.get("description", "")),
+                        card_type=self._parse_card_type(raw.get("card_type", CardType.TEXT.value)),
+                        timeout_seconds=float(raw.get("timeout_seconds", 30.0)),
+                    )
+                )
             except (ValueError, TypeError):
                 continue
         return result
@@ -1162,9 +1144,7 @@ class CrewAIAdapter(CrewAIAdapterBase):
         try:
             response = self._request("POST", "/tasks/start", body=body)
         except (ConnectionError, ValueError) as exc:
-            raise ConnectionError(
-                f"Failed to start task for agent '{agent_id}': {exc}"
-            ) from exc
+            raise ConnectionError(f"Failed to start task for agent '{agent_id}': {exc}") from exc
 
         return str(response.get("task_id", uuid.uuid4().hex))
 
