@@ -13,6 +13,7 @@ nav:
 - 快速开始: quickstart.md
 - 教程:
   - 从零搭建第一个 Agent: tutorials/first-agent.md
+- 反馈: feedback.md
 - API文档:
   - SDK: api/sdk.md
   - A2A适配器: api/adapter.md
