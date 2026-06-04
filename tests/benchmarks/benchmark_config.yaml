@@ -1,0 +1,14 @@
+# A2A Protocol Benchmark Configuration
+
+a2a:
+  concurrency: [1, 5, 10, 20]
+  duration_seconds: 30
+  message_sizes: ["small", "medium", "large"]
+
+crewai:
+  concurrency: [1, 3, 5]
+  task_complexity: ["simple", "medium", "complex"]
+
+autogen:
+  concurrency: [1, 3, 5]
+  agent_count: [2, 5, 10]
