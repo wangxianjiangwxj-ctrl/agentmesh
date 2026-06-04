@@ -1,0 +1,53 @@
+name: Feature Request / Feedback
+description: Submit feedback, feature requests, or bug reports for AgentMesh
+labels: ["feedback"]
+body:
+  - type: dropdown
+    id: feedback-type
+    attributes:
+      label: Feedback Type
+      description: Select the category that best describes your feedback
+      options:
+        - Bug Report
+        - Feature Request
+        - General Feedback
+        - Documentation
+        - Performance
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Please describe your feedback, feature request, or issue in detail
+      placeholder: Tell us what's on your mind...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: Reproduction Steps
+      description: If applicable, provide steps to reproduce the issue
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Scroll down to '...'
+        4. See error
+      value: "N/A"
+    validations:
+      required: false
+
+  - type: markdown
+    id: environment
+    attributes:
+      value: |
+        ## Environment Information
+
+        Please include the following details to help us diagnose your issue:
+
+        - **Python Version**: (e.g., 3.10, 3.11, 3.12)
+        - **Operating System**: (e.g., macOS 14, Ubuntu 22.04, Windows 11)
+        - **AgentMesh Version**: (e.g., v1.0rc1, latest main)
+        - **Installation Method**: (pip, source, clawhub)

@@ -71,15 +71,17 @@ Release Candidate 1 — 首个正式发布候选版。
 - **C** 社区 FAQ: 常见问题汇总
 - **版本号**: v1.0.0rc1
 
-### 新增 (Phase 18: 反馈循环)
-- **A-1** feedback.md: 44 行反馈指南 + mkdocs nav 配置
-- **A-2** Telemetry 决策: 使用 GitHub Issues, 不自建采集
-- **A-3** Issue 模板: .github/ISSUE_TEMPLATE/feedback.yml (4 sections)
-- **B-1** 基准测试框架: 6 文件 / 270 行 (benchmark_config + conftest + 3 test suites + run.sh)
-- **B-2** 核心流程压测: 44 tests (send/get/cancel/agent lifecycle)
-- **B-3** 报告文档: docs/benchmarks/v1.0.0-rc1-reference.md (195 行 / 10 表)
-- **B-4** CI 集成方案: proposals/ci-benchmark-integration.md (完整 YAML 工作流 + 阈值)
-- **C-1** 发布检查清单: docs/release-checklist.md (覆盖率清单)
+### 新增 (Phase 18: 反馈循环与 v1.0.0 最终版)
+- **A-1** feedback.md 落地 (docs/feedback.md + nav 配置)
+- **A-2** 反馈策略决策: 用 GitHub Issues, 不自建 Telemetry
+- **A-3** Issue 模板: .github/ISSUE_TEMPLATE/feedback.yml (4 节, YAML 已验证)
+- **B-1** 基准测试框架: 6 files, 12 tests collected (tests/benchmarks/)
+- **B-2** 核心流程压力测试: 44 tests (send/get/cancel/agent lifecycle)
+- **B-3** 性能基准报告: docs/benchmarks/v1.0.0-rc1-reference.md (195行/10表)
+- **B-4** CI 集成方案: proposals/ci-benchmark-integration.md
+- **C-1** 发布检查清单: docs/release-checklist.md (5 章 38 项 + 授权表)
+- **C-2** CHANGELOG 修订: Phase 18 全量变更记录
+- **C-3** 发布执行计划: proposals/release-execution-plan.md (5 步 20 分钟)
 
 ### 变更
 - SDK 结构: 从 flat module 重构为 package 结构 (agentmesh/)
