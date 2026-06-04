@@ -3,3 +3,4 @@ mkdocs_test.yml
 /__pycache__/
 *.pyc
 site/
+tests/performance/stress_results/*.json
