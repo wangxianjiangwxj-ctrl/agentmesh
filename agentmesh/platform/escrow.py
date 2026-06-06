@@ -1,5 +1,4 @@
-"""
-AgentMesh Platform — Module 4: Escrow / Point Settlement (v2 schema)
+"""AgentMesh Platform — Module 4: Escrow / Point Settlement (v2 schema).
 
 Core operations:
   - deposit:   add points to an agent's balance
@@ -11,26 +10,35 @@ Core operations:
 """
 from __future__ import annotations
 
-import uuid
 import json
+import uuid
 from datetime import datetime, timedelta
+from sqlite3 import Connection
 from typing import Optional
 
-from sqlite3 import Connection
-
 from identity import IdentityService
-
 
 DISPUTE_WINDOW_DAYS = 7
 DEFAULT_INITIAL_BALANCE = 1000
 
 
 class EscrowError(Exception):
+    """Raised when an escrow operation fails (e.g. insufficient balance)."""
+
     pass
 
 
 class EscrowService:
-    """Centralized escrow (points-only, no real money)."""
+    """Centralized escrow (points-only, no real money).
+
+    Manages agent account balances, escrow holds for tasks, and automated
+    dispute resolution via time-windowed auto-release.
+
+    Args:
+        db_conn: SQLite database connection with ``accounts`` and
+            ``transactions`` tables.
+        identity_svc: IdentityService for agent identity lookups.
+    """
 
     def __init__(self, db_conn: Connection, identity_svc: IdentityService):
         self.conn = db_conn
@@ -39,6 +47,15 @@ class EscrowService:
     # ── balance ─────────────────────────────────────────────────────────
 
     def get_balance(self, agent_id: str) -> dict:
+        """Query the current balance for an agent.
+
+        Args:
+            agent_id: Agent identifier.
+
+        Returns:
+            A dict with ``balance`` (total), ``frozen`` (locked), and
+            ``available`` (balance - frozen) integer values.
+        """
         row = self.conn.execute(
             "SELECT balance, frozen FROM accounts WHERE agent_id = ?", (agent_id,)
         ).fetchone()
@@ -49,6 +66,18 @@ class EscrowService:
         return {"balance": bal, "frozen": frozen, "available": bal - frozen}
 
     def deposit(self, agent_id: str, amount: int) -> dict:
+        """Deposit points into an agent's account.
+
+        Args:
+            agent_id: Target agent identifier.
+            amount: Positive integer number of points to deposit.
+
+        Returns:
+            Updated balance dict.
+
+        Raises:
+            EscrowError: If ``amount`` is not positive.
+        """
         if amount <= 0:
             raise EscrowError("Deposit amount must be positive")
         with self.conn:
@@ -69,6 +98,11 @@ class EscrowService:
         return self.get_balance(agent_id)
 
     def ensure_account(self, agent_id: str) -> None:
+        """Ensure an agent has an account, creating one with a default balance if missing.
+
+        Args:
+            agent_id: Agent identifier to check or create.
+        """
         exists = self.conn.execute(
             "SELECT 1 FROM accounts WHERE agent_id = ?", (agent_id,)
         ).fetchone()
@@ -78,6 +112,20 @@ class EscrowService:
     # ── hold ────────────────────────────────────────────────────────────
 
     def hold(self, agent_id: str, task_id: str, amount: int) -> dict:
+        """Lock points for a task (escrow hold).
+
+        Args:
+            agent_id: Publisher's agent identifier.
+            task_id: Task to associate the hold with.
+            amount: Number of points to lock.
+
+        Returns:
+            Updated balance dict.
+
+        Raises:
+            EscrowError: If amount is not positive or available balance
+                is insufficient.
+        """
         if amount <= 0:
             raise EscrowError("Escrow amount must be positive")
         account = self.get_balance(agent_id)
@@ -114,6 +162,23 @@ class EscrowService:
         executor_share: float,
         chain_hash: Optional[str] = None,
     ) -> dict:
+        """Release held points to the executor and return surplus to the publisher.
+
+        Args:
+            task_id: Task identifier.
+            publisher_id: Publisher agent ID.
+            executor_id: Executor agent ID.
+            escrow_amount: Total escrowed amount.
+            publisher_share: Fraction of escrow returned to publisher.
+            executor_share: Fraction of escrow paid to executor.
+            chain_hash: Optional evidence chain hash for audit linking.
+
+        Returns:
+            A dict with ``executor_reward`` and ``publisher_return`` amounts.
+
+        Raises:
+            EscrowError: If the publisher's frozen balance is insufficient.
+        """
         executor_reward = int(escrow_amount * executor_share) if executor_share else escrow_amount
         publisher_return = escrow_amount - executor_reward
         self._validate_hold(publisher_id, escrow_amount)
@@ -154,6 +219,21 @@ class EscrowService:
         reason: str = "cancelled",
         chain_hash: Optional[str] = None,
     ) -> dict:
+        """Return held points to the publisher (on cancel / rejection).
+
+        Args:
+            task_id: Task identifier.
+            publisher_id: Publisher agent ID.
+            escrow_amount: Total escrowed amount to release back.
+            reason: Cancellation reason (default ``"cancelled"``).
+            chain_hash: Optional evidence chain hash for audit linking.
+
+        Returns:
+            Updated balance dict for the publisher.
+
+        Raises:
+            EscrowError: If the publisher's frozen balance is insufficient.
+        """
         self._validate_hold(publisher_id, escrow_amount)
         with self.conn:
             self.conn.execute(
@@ -176,6 +256,15 @@ class EscrowService:
     # ── auto-release ────────────────────────────────────────────────────
 
     def auto_release(self, task_id: str) -> Optional[dict]:
+        """Automatically release escrow after the dispute window has expired.
+
+        Args:
+            task_id: Task to evaluate for auto-release.
+
+        Returns:
+            A dict with ``executor_reward``, ``publisher_return``, and
+            ``type`` fields, or ``None`` if no eligible hold exists.
+        """
         hold_tx = self.conn.execute(
             """SELECT * FROM transactions
                WHERE task_id = ? AND action = 'hold' AND status = 'pending'
@@ -196,14 +285,15 @@ class EscrowService:
             from_agent = hold_tx["from_agent"]
             escrow_amount = hold_tx["amount"]
             task = self.conn.execute(
-                "SELECT executor_id, publisher_share, executor_share FROM tasks WHERE id = ?",
+                "SELECT executor_id FROM tasks WHERE id = ?",
                 (task_id,),
             ).fetchone()
             if task is None or task["executor_id"] is None:
                 return self.refund(task_id, from_agent, escrow_amount, reason="auto-refund-no-executor")
 
             executor_id = task["executor_id"]
-            executor_reward = int(escrow_amount * (task.get("executor_share") or 0.5))
+            # Default 50/50 split; schema does not store per-task shares
+            executor_reward = escrow_amount // 2
             publisher_return = escrow_amount - executor_reward
 
             self.conn.execute(
@@ -235,6 +325,14 @@ class EscrowService:
     # ── queries ─────────────────────────────────────────────────────────
 
     def get_transactions(self, task_id: str) -> list[dict]:
+        """Retrieve all transactions for a given task.
+
+        Args:
+            task_id: Task identifier.
+
+        Returns:
+            List of transaction dicts ordered by creation time.
+        """
         rows = self.conn.execute(
             "SELECT * FROM transactions WHERE task_id = ? ORDER BY created_at ASC",
             (task_id,),
@@ -242,6 +340,15 @@ class EscrowService:
         return [dict(r) for r in rows]
 
     def get_agent_transactions(self, agent_id: str, limit: int = 20) -> list[dict]:
+        """Retrieve recent transactions for a specific agent.
+
+        Args:
+            agent_id: Agent identifier.
+            limit: Maximum number of transactions to return (default 20).
+
+        Returns:
+            List of transaction dicts in reverse chronological order.
+        """
         rows = self.conn.execute(
             """SELECT * FROM transactions
                WHERE from_agent = ? OR to_agent = ?
@@ -251,6 +358,12 @@ class EscrowService:
         return [dict(r) for r in rows]
 
     def get_dispute_eligible_tasks(self) -> list[dict]:
+        """Find all tasks whose dispute deadline has passed.
+
+        Returns:
+            List of dicts with task_id, title, executor_id, amount,
+            and dispute_deadline.
+        """
         rows = self.conn.execute(
             """SELECT t.id as task_id, t.title, t.executor_id, et.amount, et.dispute_deadline
                FROM transactions et
@@ -266,6 +379,15 @@ class EscrowService:
     # ── validators ──────────────────────────────────────────────────────
 
     def _validate_hold(self, agent_id: str, amount: int) -> None:
+        """Assert that an agent has sufficient frozen balance.
+
+        Args:
+            agent_id: Agent identifier.
+            amount: Expected frozen amount.
+
+        Raises:
+            EscrowError: If the frozen balance does not match.
+        """
         account = self.get_balance(agent_id)
         if account["frozen"] < amount:
             raise EscrowError(

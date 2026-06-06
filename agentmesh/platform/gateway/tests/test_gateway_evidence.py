@@ -8,15 +8,18 @@ from gateway.deps import reset_db
 
 @pytest.fixture(autouse=True)
 def _reset():
+    """Reset database state before each test."""
     reset_db()
 
 
 @pytest.fixture
 def client():
+    """Create a FastAPI test client for gateway endpoint testing."""
     return TestClient(create_app())
 
 
 def test_record_evidence(client):
+    """Test recording evidence for a task action."""
     headers = {"X-API-Key": "test-key"}
     # Register the agent first so it has a key pair for signing
     reg = client.post(

@@ -18,6 +18,7 @@ def client():
 
 
 def test_register_agent(client):
+    """Test registering a new agent with name and auth token."""
     resp = client.post(
         "/api/v1/agents/register",
         json={"name": "test-agent", "auth_token": "token-1"},
@@ -32,6 +33,7 @@ def test_register_agent(client):
 
 
 def test_get_agent(client):
+    """Test retrieving a registered agent by ID."""
     # Register first
     reg = client.post(
         "/api/v1/agents/register",
@@ -53,6 +55,7 @@ def test_get_agent(client):
 
 
 def test_get_agent_not_found(client):
+    """Test retrieving a non-existent agent returns 404."""
     resp = client.get(
         "/api/v1/agents/nonexistent-id",
         headers={"X-API-Key": "test-key"},

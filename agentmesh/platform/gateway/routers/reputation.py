@@ -1,8 +1,12 @@
-"""Reputation router — wraps ReviewService for review submission and reputation query."""
+"""Reputation router — wraps ReviewService for review submission and reputation query.
+
+Provides REST endpoints for submitting reviews and querying agent
+reputation scores.
+"""
 
 from fastapi import APIRouter, HTTPException, Request
-from starlette.responses import JSONResponse
 from pydantic import BaseModel
+from starlette.responses import JSONResponse
 
 from ..deps import get_review_service
 
@@ -10,6 +14,15 @@ router = APIRouter()
 
 
 class SubmitReviewBody(BaseModel):
+    """Request body for submitting a review.
+
+    Attributes:
+        task_id: Task the review relates to.
+        target_id: Agent being reviewed.
+        score: Rating from 1 (worst) to 5 (best).
+        comment: Optional textual feedback.
+    """
+
     task_id: str
     target_id: str
     score: int
@@ -18,6 +31,18 @@ class SubmitReviewBody(BaseModel):
 
 @router.post("/reviews/submit")
 def submit_review(body: SubmitReviewBody, request: Request):
+    """Submit a review for an agent on a completed task.
+
+    The authenticated agent becomes the reviewer.
+
+    Args:
+        body: Review submission payload.
+        request: The incoming HTTP request (provides reviewer context).
+
+    Returns:
+        JSON with ``review_id``, ``task_id``, ``reviewer_id``,
+        ``target_id``, and ``score``.
+    """
     svc = get_review_service()
     rater_id = getattr(request.state, "agent_id", "unknown")
     try:
@@ -44,6 +69,15 @@ def submit_review(body: SubmitReviewBody, request: Request):
 
 @router.get("/reputation/{agent_id}")
 def get_reputation(agent_id: str):
+    """Query the reputation score for an agent.
+
+    Args:
+        agent_id: Agent identifier.
+
+    Returns:
+        JSON with ``agent_id``, ``reputation_score``, and
+        ``total_reviews``.
+    """
     svc = get_review_service()
     result = svc.get_reputation(agent_id)
     return JSONResponse(

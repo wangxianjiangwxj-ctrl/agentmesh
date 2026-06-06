@@ -1,4 +1,7 @@
-"""AgentMesh Platform - Identity Module
+"""AgentMesh Platform - Identity Module.
+
+Provides DID-compatible agent identity generation, key management,
+and a persistent registry backed by SQLite.
 """
 from __future__ import annotations
 
@@ -15,11 +18,10 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 )
 from cryptography.hazmat.primitives.serialization import (
     Encoding,
+    NoEncryption,
     PrivateFormat,
     PublicFormat,
-    NoEncryption,
 )
-
 
 # ---------------------------------------------------------------------------
 # DID-compatible agent identity
@@ -30,19 +32,37 @@ DID_PREFIX = f"did:{DID_METHOD}:key:"
 
 
 def generate_agent_keypair() -> tuple[Ed25519PrivateKey, Ed25519PublicKey]:
-    """Generate a fresh Ed25519 key pair for an agent."""
+    """Generate a fresh Ed25519 key pair for an agent.
+
+    Returns:
+        A tuple of (private_key, public_key) from the Ed25519 curve.
+    """
     private_key = Ed25519PrivateKey.generate()
     return private_key, private_key.public_key()
 
 
 def encode_public_key(pub: Ed25519PublicKey) -> str:
-    """Encode a public key as multibase base64url string."""
+    """Encode a public key as a multibase base64url string.
+
+    Args:
+        pub: The Ed25519 public key to encode.
+
+    Returns:
+        URL-safe base64-encoded string (without trailing padding).
+    """
     raw = pub.public_bytes(encoding=Encoding.Raw, format=PublicFormat.Raw)
     return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
 
 
 def decode_public_key(key_str: str) -> Ed25519PublicKey:
-    """Restore public key from encoded string."""
+    """Restore an Ed25519 public key from its encoded string form.
+
+    Args:
+        key_str: URL-safe base64-encoded public key (may lack padding).
+
+    Returns:
+        The decoded Ed25519PublicKey instance.
+    """
     padding = 4 - len(key_str) % 4
     if padding != 4:
         key_str += "=" * padding
@@ -51,26 +71,60 @@ def decode_public_key(key_str: str) -> Ed25519PublicKey:
 
 
 def make_did(pub: Ed25519PublicKey) -> str:
-    """Build a DID string from a public key."""
+    """Build a DID string from a public key.
+
+    Args:
+        pub: The Ed25519 public key to encode into the DID.
+
+    Returns:
+        A DID string in the form ``did:agentmesh:key:<encoded_key>``.
+    """
     return f"{DID_PREFIX}{encode_public_key(pub)}"
 
 
 def parse_did(did: str) -> Optional[str]:
-    """Extract the public-key portion from a DID, or None if invalid."""
+    """Extract the public-key portion from a DID string.
+
+    Args:
+        did: A DID string (e.g. ``did:agentmesh:key:...``).
+
+    Returns:
+        The encoded public-key portion, or ``None`` if the DID does not
+        match the expected prefix.
+    """
     if not did.startswith(DID_PREFIX):
         return None
     return did[len(DID_PREFIX):]
 
 
 def sign(payload: dict, private_key: Ed25519PrivateKey) -> str:
-    """Sign a JSON-serializable payload; returns base64 signature."""
+    """Sign a JSON-serializable payload and return a base64 signature.
+
+    The payload is canonicalised (sorted keys, no whitespace) before signing.
+
+    Args:
+        payload: The dictionary to sign.
+        private_key: The Ed25519 private key used for signing.
+
+    Returns:
+        Base64-encoded signature string.
+    """
     serialised = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
     sig = private_key.sign(serialised)
     return base64.b64encode(sig).decode()
 
 
 def verify(payload: dict, signature: str, public_key: Ed25519PublicKey) -> bool:
-    """Verify a signature against a JSON-serializable payload."""
+    """Verify a signature against a JSON-serializable payload.
+
+    Args:
+        payload: The dictionary that was signed.
+        signature: Base64-encoded signature to verify.
+        public_key: The Ed25519 public key corresponding to the signing key.
+
+    Returns:
+        ``True`` if the signature is valid, ``False`` otherwise.
+    """
     serialised = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
     sig_bytes = base64.b64decode(signature)
     try:
@@ -85,7 +139,18 @@ def double_sign(
     sender_key: Ed25519PrivateKey,
     receiver_key: Optional[Ed25519PrivateKey] = None,
 ) -> dict:
-    """Create a double-signed envelope (sender + optional receiver)."""
+    """Create a double-signed envelope (sender + optional receiver).
+
+    Args:
+        payload: The dictionary to sign.
+        sender_key: The sender's Ed25519 private key.
+        receiver_key: The receiver's Ed25519 private key; if provided,
+            a second signature is added as ``receiver_signature``.
+
+    Returns:
+        A dict containing the original payload, the sender's signature,
+        and optionally the receiver's signature.
+    """
     envelope = {
         "payload": payload,
         "sender_signature": sign(payload, sender_key),
@@ -121,7 +186,14 @@ CREATE TABLE IF NOT EXISTS agent_private_keys (
 
 
 def init_db(db_path: str | Path) -> sqlite3.Connection:
-    """Initialise the agent database, creating tables if needed."""
+    """Initialise the agent database, creating tables if needed.
+
+    Args:
+        db_path: Filesystem path to the SQLite database file.
+
+    Returns:
+        A new SQLite connection with row factory and WAL mode enabled.
+    """
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
@@ -131,7 +203,14 @@ def init_db(db_path: str | Path) -> sqlite3.Connection:
 
 
 class IdentityService:
-    """Agent identity registration and key management."""
+    """Agent identity registration and key management.
+
+    Provides CRUD for agents, private key storage, and signature
+    generation / verification helpers.
+
+    Args:
+        db_path: Path to the SQLite database file used for persistence.
+    """
 
     def __init__(self, db_path: str | Path):
         self.db_path = Path(db_path)
@@ -141,11 +220,13 @@ class IdentityService:
 
     @property
     def conn(self) -> sqlite3.Connection:
+        """Return the lazy-initialised database connection."""
         if self._conn is None:
             self._conn = init_db(self.db_path)
         return self._conn
 
     def close(self) -> None:
+        """Close the database connection and release resources."""
         if self._conn is not None:
             self._conn.close()
             self._conn = None
@@ -157,10 +238,17 @@ class IdentityService:
         name: str,
         auth_token: str = "",
         metadata: dict | None = None,
-    ) -> str:
+    ) -> dict:
         """Register a new agent: generates key pair, persists identity.
 
-        Returns the agent ID.
+        Args:
+            name: Human-readable alias for the agent.
+            auth_token: Optional Feishu user_id or webhook secret.
+            metadata: Optional JSON-serialisable metadata dict.
+
+        Returns:
+            A dict containing ``agent_id``, ``did``, ``name``, and
+            ``public_key`` for the newly created agent.
         """
         priv, pub = generate_agent_keypair()
         agent_id = uuid.uuid4().hex
@@ -191,7 +279,14 @@ class IdentityService:
         return row
 
     def get_agent(self, agent_id: str) -> Optional[dict]:
-        """Fetch a public agent record by ID."""
+        """Fetch a public agent record by ID.
+
+        Args:
+            agent_id: The agent's UUID.
+
+        Returns:
+            A dict of agent fields, or ``None`` if not found.
+        """
         row = self.conn.execute(
             "SELECT id, did, name, public_key, auth_token, metadata, reputation, task_count, created_at FROM agents WHERE id = ?",
             (agent_id,),
@@ -199,7 +294,14 @@ class IdentityService:
         return dict(row) if row else None
 
     def get_agent_by_did(self, did: str) -> Optional[dict]:
-        """Fetch agent record by DID."""
+        """Fetch an agent record by its DID.
+
+        Args:
+            did: The agent's DID string.
+
+        Returns:
+            A dict of agent fields, or ``None`` if not found.
+        """
         row = self.conn.execute(
             "SELECT id, did, name, public_key, auth_token, metadata, reputation, task_count, created_at FROM agents WHERE did = ?",
             (did,),
@@ -207,7 +309,14 @@ class IdentityService:
         return dict(row) if row else None
 
     def get_agent_by_auth(self, auth_token: str) -> Optional[dict]:
-        """Lookup agent by Feishu user_id / auth token."""
+        """Look up an agent by Feishu user_id or auth token.
+
+        Args:
+            auth_token: The authentication token to search for.
+
+        Returns:
+            A dict of agent fields, or ``None`` if not found.
+        """
         row = self.conn.execute(
             "SELECT id, did, name, public_key, auth_token, metadata, reputation, task_count, created_at FROM agents WHERE auth_token = ?",
             (auth_token,),
@@ -215,7 +324,16 @@ class IdentityService:
         return dict(row) if row else None
 
     def get_private_key(self, agent_id: str) -> Optional[Ed25519PrivateKey]:
-        """Load the private key for a registered agent (in-memory only)."""
+        """Load the private key for a registered agent.
+
+        The key is decoded from its stored encoded form.
+
+        Args:
+            agent_id: The agent's UUID.
+
+        Returns:
+            The Ed25519PrivateKey, or ``None`` if not found.
+        """
         row = self.conn.execute(
             "SELECT private_key_enc FROM agent_private_keys WHERE agent_id = ?",
             (agent_id,),
@@ -225,6 +343,11 @@ class IdentityService:
         return decode_private_key(row["private_key_enc"])
 
     def fetch_all_registrations(self) -> list[dict]:
+        """Return all registered agents ordered by creation time.
+
+        Returns:
+            A list of agent field dicts (excluding private keys).
+        """
         rows = self.conn.execute(
             "SELECT id, did, name, public_key, reputation, task_count, created_at FROM agents ORDER BY created_at"
         ).fetchall()
@@ -233,12 +356,26 @@ class IdentityService:
     # -- raw key encoding (private) -----------------------------------------
 
     def export_key(self, agent_id: str) -> str:
+        """Export a registered agent's private key as an encoded string.
+
+        Args:
+            agent_id: The agent's UUID.
+
+        Returns:
+            Base64-encoded private key string, or empty string if not found.
+        """
         raw = self.get_private_key(agent_id)
         if raw is None:
             return ""
         return encode_private_key(raw)
 
     def import_key(self, agent_id: str, pem_key: str) -> None:
+        """Import and store a private key for a registered agent.
+
+        Args:
+            agent_id: The agent's UUID.
+            pem_key: Base64-encoded private key bytes.
+        """
         priv = Ed25519PrivateKey.from_private_bytes(
             base64.b64decode(pem_key) if not pem_key.startswith("-----") else ""
         )
@@ -249,12 +386,32 @@ class IdentityService:
             )
 
     def sign_payload(self, agent_id: str, payload: dict) -> Optional[str]:
+        """Sign a payload on behalf of a registered agent.
+
+        Args:
+            agent_id: The agent's UUID.
+            payload: The dictionary to sign.
+
+        Returns:
+            Base64-encoded signature, or ``None`` if the agent's private
+            key is not available.
+        """
         priv = self.get_private_key(agent_id)
         if priv is None:
             return None
         return sign(payload, priv)
 
     def verify_signature(self, did: str, payload: dict, signature: str) -> bool:
+        """Verify a signature against an agent's public key (from DID).
+
+        Args:
+            did: The agent's DID string (includes the encoded public key).
+            payload: The dictionary that was signed.
+            signature: Base64-encoded signature to verify.
+
+        Returns:
+            ``True`` if the signature is valid, ``False`` otherwise.
+        """
         key_str = parse_did(did)
         if key_str is None:
             return False
@@ -267,6 +424,14 @@ class IdentityService:
 # ---------------------------------------------------------------------------
 
 def encode_private_key(key: Ed25519PrivateKey) -> str:
+    """Encode an Ed25519 private key as a base64 string.
+
+    Args:
+        key: The Ed25519 private key to encode.
+
+    Returns:
+        Base64-encoded private key bytes.
+    """
     raw = key.private_bytes(
         encoding=Encoding.Raw,
         format=PrivateFormat.Raw,
@@ -276,6 +441,14 @@ def encode_private_key(key: Ed25519PrivateKey) -> str:
 
 
 def decode_private_key(encoded: str) -> Ed25519PrivateKey:
+    """Decode a base64-encoded Ed25519 private key.
+
+    Args:
+        encoded: Base64-encoded private key string.
+
+    Returns:
+        The decoded Ed25519PrivateKey instance.
+    """
     raw = base64.b64decode(encoded)
     return Ed25519PrivateKey.from_private_bytes(raw)
 
@@ -283,4 +456,12 @@ def decode_private_key(encoded: str) -> Ed25519PrivateKey:
 # -- convenience shortcut ---------------------------------------------------
 
 def create_service(db_path: str | Path = "agentmesh.db") -> IdentityService:
+    """Create and return a default IdentityService instance.
+
+    Args:
+        db_path: Path to the SQLite database file (default: ``agentmesh.db``).
+
+    Returns:
+        A ready-to-use IdentityService instance.
+    """
     return IdentityService(db_path)

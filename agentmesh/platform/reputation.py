@@ -1,25 +1,31 @@
-"""
-AgentMesh Platform — Module 5: Reviews & Reputation (sync, SQLite-backed)
+"""AgentMesh Platform — Module 5: Reviews & Reputation (sync, SQLite-backed).
 
 Matches db_schema.py v2 (reviews + agent_reputation tables).
 """
 from __future__ import annotations
 
 import uuid
-import json
-import time
-from typing import Optional
 from sqlite3 import Connection
 
-from identity import IdentityService
 from evidence_chain import EvidenceChainService
+from identity import IdentityService
 
 BAYESIAN_PRIOR = 3.0
 BAYESIAN_PRIOR_N = 2
 
 
 class ReviewService:
-    """Sync review + reputation service for the AgentMesh platform."""
+    """Sync review + reputation service for the AgentMesh platform.
+
+    Handles review submission, reputation (Bayesian average) computation,
+    and top-agent rankings.
+
+    Args:
+        db_conn: SQLite connection with ``reviews`` and
+            ``agent_reputation`` tables.
+        identity_svc: IdentityService for agent lookups.
+        evidence_svc: EvidenceChainService for audit chain integration.
+    """
 
     def __init__(
         self,
@@ -41,7 +47,23 @@ class ReviewService:
         score: int,
         comment: str = "",
     ) -> dict:
-        """Submit a review (1-5). No self-review, no duplicates."""
+        """Submit a review (1-5). No self-review, no duplicates.
+
+        Args:
+            task_id: Task the review is for.
+            rater_id: Agent submitting the review.
+            target_id: Agent being reviewed.
+            score: Rating from 1 (worst) to 5 (best).
+            comment: Optional textual feedback.
+
+        Returns:
+            A dict with ``id``, ``task_id``, ``rater_id``, ``target_id``,
+            ``score``, and ``comment``.
+
+        Raises:
+            ValueError: If the rater and target are the same, the score
+                is out of range, or the review is a duplicate.
+        """
         if rater_id == target_id:
             raise ValueError("Cannot self-review")
         if not (1 <= score <= 5):
@@ -76,6 +98,15 @@ class ReviewService:
     # ── queries ────────────────────────────────────────────────────────
 
     def get_reviews_for_target(self, target_id: str, limit: int = 50) -> list[dict]:
+        """Fetch reviews for a specific agent.
+
+        Args:
+            target_id: The agent whose reviews to retrieve.
+            limit: Maximum number of reviews (default 50).
+
+        Returns:
+            List of review dicts in reverse chronological order.
+        """
         rows = self.conn.execute(
             "SELECT * FROM reviews WHERE target_id = ? ORDER BY created_at DESC LIMIT ?",
             (target_id, limit),
@@ -83,6 +114,14 @@ class ReviewService:
         return [dict(r) for r in rows]
 
     def get_reviews_for_task(self, task_id: str) -> list[dict]:
+        """Fetch all reviews for a specific task.
+
+        Args:
+            task_id: Task identifier.
+
+        Returns:
+            List of review dicts in chronological order.
+        """
         rows = self.conn.execute(
             "SELECT * FROM reviews WHERE task_id = ? ORDER BY created_at ASC",
             (task_id,),
@@ -90,6 +129,18 @@ class ReviewService:
         return [dict(r) for r in rows]
 
     def get_reputation(self, agent_id: str) -> dict:
+        """Get the current reputation for an agent.
+
+        Returns cached data from ``agent_reputation``, or computes a
+        fallback with the Bayesian prior if no reviews exist.
+
+        Args:
+            agent_id: Agent to query.
+
+        Returns:
+            A dict with ``agent_id``, ``avg_rating``, ``total_reviews``,
+            ``as_publisher``, and ``as_executor``.
+        """
         row = self.conn.execute(
             "SELECT * FROM agent_reputation WHERE agent_id = ?",
             (agent_id,),
@@ -107,6 +158,15 @@ class ReviewService:
         }
 
     def list_top_agents(self, limit: int = 10) -> list[dict]:
+        """List top agents ranked by average rating.
+
+        Args:
+            limit: Maximum number of agents to return (default 10).
+
+        Returns:
+            List of agent_reputation dicts sorted by rating (desc) and
+            review count (desc).
+        """
         rows = self.conn.execute(
             """SELECT * FROM agent_reputation
                ORDER BY avg_rating DESC, total_reviews DESC
@@ -118,7 +178,16 @@ class ReviewService:
     # ── lifecycle ──────────────────────────────────────────────────────
 
     def on_task_settled(self, task_id: str, publisher_id: str, executor_id: str) -> dict:
-        """Called when a task is settled. Updates task stats."""
+        """Called when a task is settled; updates agent task counts.
+
+        Args:
+            task_id: Settled task identifier.
+            publisher_id: Publisher agent ID.
+            executor_id: Executor agent ID.
+
+        Returns:
+            A dict with ``task_id`` and ``review_window_open``.
+        """
         with self.conn:
             for agent_id in (publisher_id, executor_id):
                 self.conn.execute(
@@ -139,7 +208,11 @@ class ReviewService:
     # ── internals ──────────────────────────────────────────────────────
 
     def _recompute_reputation(self, agent_id: str) -> None:
-        """Bayesian average for reputation scores."""
+        """Compute and persist a Bayesian average reputation for an agent.
+
+        Args:
+            agent_id: Agent whose reputation to update.
+        """
         rows = self.conn.execute(
             "SELECT rating FROM reviews WHERE target_id = ?",
             (agent_id,),

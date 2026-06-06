@@ -31,6 +31,14 @@ class A2AResult:
         error: Union[Dict[str, Any], str, None] = None,
         task_state: Optional[str] = None,
     ) -> None:
+        """Initialize an A2AResult instance.
+
+        Args:
+            success: Whether the operation succeeded.
+            data: Result payload data.
+            error: Error information if the operation failed.
+            task_state: Optional task state string (e.g. "submitted").
+        """
         self.success = success
         self.data = data
         self.error = error
@@ -38,13 +46,32 @@ class A2AResult:
 
     @classmethod
     def ok(cls, data: ResultData, task_state: Optional[str] = None) -> A2AResult:
+        """Create a successful A2AResult.
+
+        Args:
+            data: Result payload data.
+            task_state: Optional task state string.
+
+        Returns:
+            A successful A2AResult instance.
+        """
         return cls(True, data=data, task_state=task_state)
 
     @classmethod
     def fail(cls, error: Union[Dict[str, Any], str, A2AError, None], task_state: Optional[str] = None) -> A2AResult:
+        """Create a failed A2AResult.
+
+        Args:
+            error: Error information (dict, string, A2AError, or None).
+            task_state: Optional task state string.
+
+        Returns:
+            A failed A2AResult instance.
+        """
         return cls(False, error=error, task_state=task_state)
 
     def __bool__(self):
+        """Return True if the operation succeeded."""
         return self.success
 
 
@@ -52,6 +79,13 @@ class A2AError(Exception):
     """A2A协议错误"""
 
     def __init__(self, code: int, message: str, recoverable: bool = False):
+        """Initialize an A2A protocol error.
+
+        Args:
+            code: Error status code.
+            message: Human-readable error description.
+            recoverable: Whether the operation can be retried.
+        """
         self.code = code
         self.message = message
         self.recoverable = recoverable
@@ -66,6 +100,13 @@ class ProviderError(A2AError):
     """
     def __init__(self, code: int = 500, message: str = "Provider error",
                  recoverable: bool = True):
+        """Initialize a ProviderError.
+
+        Args:
+            code: HTTP status code (default 500).
+            message: Error description.
+            recoverable: Whether the error is retryable.
+        """
         super().__init__(code, message, recoverable)
 
 
@@ -97,6 +138,15 @@ class A2ATaskState:
 
     @classmethod
     def can_transition(cls, current: str, target: str) -> bool:
+        """Check whether a state transition is valid.
+
+        Args:
+            current: The current task state string.
+            target: The desired target state string.
+
+        Returns:
+            True if the transition is allowed, False otherwise.
+        """
         if current not in cls._VALID_TRANSITIONS:
             return False
         return target in cls._VALID_TRANSITIONS[current]
@@ -106,6 +156,7 @@ class A2ATaskManager:
     """A2A Task状态机管理器"""
 
     def __init__(self) -> None:
+        """Initialize an empty task manager."""
         self._tasks: dict = {}
 
     def track(
@@ -115,6 +166,20 @@ class A2ATaskManager:
         parent_id: Optional[str] = None,
         metadata: Optional[dict] = None,
     ) -> dict:
+        """Register a new task for state tracking.
+
+        Args:
+            task_id: Unique task identifier.
+            initial_state: Starting state for the task.
+            parent_id: Optional parent task ID for hierarchical tracking.
+            metadata: Optional arbitrary metadata to attach.
+
+        Returns:
+            The task state dict.
+
+        Raises:
+            A2AError: If the task_id is already tracked.
+        """
         if task_id in self._tasks:
             raise A2AError(409, f"Task already tracked: {task_id}")
         self._tasks[task_id] = {
@@ -130,6 +195,18 @@ class A2ATaskManager:
         return self._tasks[task_id]
 
     def update_state(self, task_id: str, new_state: str) -> bool:
+        """Update the state of a tracked task.
+
+        Args:
+            task_id: The task to update.
+            new_state: The target state to transition to.
+
+        Returns:
+            True if the state was updated, False if the task was not found.
+
+        Raises:
+            A2AError: If the state transition is invalid.
+        """
         task = self._tasks.get(task_id)
         if not task:
             return False
@@ -143,15 +220,36 @@ class A2ATaskManager:
         return True
 
     def get_task(self, task_id: str) -> Optional[dict]:
+        """Retrieve a tracked task by its ID.
+
+        Args:
+            task_id: The task identifier.
+
+        Returns:
+            The task state dict, or None if not found.
+        """
         return self._tasks.get(task_id)
 
     def get_children(self, task_id: str) -> List[dict]:
+        """Get all child tasks of a given parent task.
+
+        Args:
+            task_id: The parent task identifier.
+
+        Returns:
+            List of child task state dicts.
+        """
         task = self._tasks.get(task_id)
         if not task:
             return []
         return [self._tasks[cid] for cid in task["children_ids"] if cid in self._tasks]
 
     def cleanup(self, max_age_seconds: float = 3600) -> None:
+        """Remove completed/failed/canceled tasks older than max_age.
+
+        Args:
+            max_age_seconds: Maximum age in seconds before cleanup (default 3600).
+        """
         now = __import__("datetime").datetime.utcnow()
         to_remove = []
         for tid, t in self._tasks.items():
@@ -179,27 +277,66 @@ class A2AProvider:
     """
 
     def __init__(self, name: str) -> None:
+        """Initialize an A2AProvider.
+
+        Args:
+            name: Provider name identifier.
+        """
         self._name = name
         self._capabilities: Set[str] = set()
 
     @property
     def name(self) -> str:
+        """Return the provider name."""
         return self._name
 
     @property
     def capabilities(self) -> Set[str]:
+        """Return the set of provider capability flags."""
         return self._capabilities
 
     def send_message(self, task: dict, auth: Optional[dict] = None) -> A2AResult:
+        """Send a task message to the provider.
+
+        Args:
+            task: Task dictionary with at minimum an "id" field.
+            auth: Optional authentication dict.
+
+        Returns:
+            An A2AResult indicating success or failure.
+        """
         raise NotImplementedError
 
     def get_task(self, task_id: str, auth: Optional[dict] = None) -> A2AResult:
+        """Retrieve a task from the provider.
+
+        Args:
+            task_id: The task identifier to retrieve.
+            auth: Optional authentication dict.
+
+        Returns:
+            An A2AResult containing the task data or error.
+        """
         raise NotImplementedError
 
     def cancel_task(self, task_id: str, auth: Optional[dict] = None) -> A2AResult:
+        """Cancel a task on the provider.
+
+        Args:
+            task_id: The task identifier to cancel.
+            auth: Optional authentication dict.
+
+        Returns:
+            An A2AResult indicating success or failure.
+        """
         raise NotImplementedError
 
     def ping(self) -> A2AResult:
+        """Check provider health.
+
+        Returns:
+            An A2AResult with status information.
+        """
         return A2AResult.ok({"status": "ok", "provider": self._name})
 
 
@@ -217,18 +354,45 @@ class MemoryProvider(A2AProvider):
     """
 
     def __init__(self, name: str = "memory") -> None:
+        """Initialize a MemoryProvider.
+
+        Args:
+            name: Provider name (default "memory").
+        """
         super().__init__(name)
         self._tasks: dict = {}
         self._agent_cards: dict = {}
         self._capabilities: Set[str] = {"local", "no-network"}
 
     def register_agent_card(self, card: dict) -> None:
+        """Register an agent card for discovery.
+
+        Args:
+            card: Agent card dict with at least a "name" key.
+        """
         self._agent_cards[card.get("name", "")] = card
 
     def get_agent_card(self, name: str) -> Optional[dict]:
+        """Retrieve a registered agent card by name.
+
+        Args:
+            name: Agent name.
+
+        Returns:
+            The agent card dict, or None if not found.
+        """
         return self._agent_cards.get(name)
 
     def send_message(self, task: dict, auth: Optional[dict] = None) -> A2AResult:
+        """Store a task in memory.
+
+        Args:
+            task: Task dict with at least an "id" field.
+            auth: Optional authentication dict (ignored in memory mode).
+
+        Returns:
+            A2AResult with task_state "submitted" on success.
+        """
         task_id = task.get("id", "")
         if not task_id:
             return A2AResult.fail(A2AError(400, "Missing task id"))
@@ -236,12 +400,30 @@ class MemoryProvider(A2AProvider):
         return A2AResult.ok(task, task_state="submitted")
 
     def get_task(self, task_id: str, auth: Optional[dict] = None) -> A2AResult:
+        """Retrieve a task from memory.
+
+        Args:
+            task_id: The task identifier to retrieve.
+            auth: Optional authentication dict (ignored in memory mode).
+
+        Returns:
+            A2AResult containing the task data, or 404 error.
+        """
         task = self._tasks.get(task_id)
         if not task:
             return A2AResult.fail(A2AError(404, f"Task not found: {task_id}"))
         return A2AResult.ok(task, task_state=task.get("status", {}).get("state", "unknown"))
 
     def cancel_task(self, task_id: str, auth: Optional[dict] = None) -> A2AResult:
+        """Cancel a task in memory.
+
+        Args:
+            task_id: The task identifier to cancel.
+            auth: Optional authentication dict (ignored in memory mode).
+
+        Returns:
+            A2AResult with task_state "canceled" on success, or 404 error.
+        """
         task = self._tasks.get(task_id)
         if not task:
             return A2AResult.fail(A2AError(404, f"Task not found: {task_id}"))
@@ -269,10 +451,21 @@ class A2AFacade:
         provider: Optional[A2AProvider] = None,
         task_manager: Optional[A2ATaskManager] = None,
     ) -> None:
+        """Initialize an A2AFacade.
+
+        Args:
+            provider: A2AProvider instance (defaults to MemoryProvider).
+            task_manager: A2ATaskManager instance (defaults to new manager).
+        """
         self.provider = provider or MemoryProvider()
         self.task_manager = task_manager or A2ATaskManager()
 
     def set_provider(self, provider: A2AProvider):
+        """Replace the underlying provider at runtime.
+
+        Args:
+            provider: New A2AProvider instance to use.
+        """
         self.provider = provider
 
     def send_task(self, task: dict) -> A2AResult:
@@ -288,9 +481,25 @@ class A2AFacade:
         return result
 
     def get_task(self, task_id: str) -> A2AResult:
+        """Retrieve a task via the underlying provider.
+
+        Args:
+            task_id: The task identifier to retrieve.
+
+        Returns:
+            A2AResult with task data or error.
+        """
         return self.provider.get_task(task_id)
 
     def cancel_task(self, task_id: str) -> A2AResult:
+        """Cancel a task and update the task manager state.
+
+        Args:
+            task_id: The task identifier to cancel.
+
+        Returns:
+            A2AResult indicating success or failure.
+        """
         result = self.provider.cancel_task(task_id)
         if result.success:
             self.task_manager.update_state(task_id, A2ATaskState.CANCELED)

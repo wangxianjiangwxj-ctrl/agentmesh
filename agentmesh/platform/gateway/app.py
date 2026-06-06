@@ -1,9 +1,23 @@
+"""Gateway application factory — wires FastAPI with all route modules and middleware.
+
+Creates the FastAPI application, registers routers and middleware,
+and exposes a convenience factory function.
+"""
 from fastapi import FastAPI
-from .routers import identity, tasks, escrow, evidence, reputation
+
 from .middleware.auth import AuthMiddleware
+from .routers import escrow, evidence, identity, reputation, tasks
 
 
 def create_app() -> FastAPI:
+    """Create and configure the AgentMesh API Gateway application.
+
+    Registers all five route modules under the ``/api/v1`` prefix and
+    attaches the AuthMiddleware.
+
+    Returns:
+        A fully configured FastAPI application instance.
+    """
     app = FastAPI(title="AgentMesh API Gateway", version="0.1.0")
     app.add_middleware(AuthMiddleware)
     app.include_router(identity.router, prefix="/api/v1")
@@ -14,6 +28,11 @@ def create_app() -> FastAPI:
 
     @app.get("/api/v1/health")
     def health():
+        """Health check endpoint.
+
+        Returns:
+            A dict with ``status`` and ``version`` fields.
+        """
         return {"status": "ok", "version": "0.1.0"}
 
     return app

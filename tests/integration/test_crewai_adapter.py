@@ -427,7 +427,8 @@ class TestCrewAIRealServerIntegration(unittest.TestCase):
         cls._server_port = int(os.environ.get("A2A_SERVER_PORT", "8089"))
         cls.server_url = f"http://localhost:{cls._server_port}"
 
-        import urllib.request, urllib.error
+        import urllib.error
+        import urllib.request
 
         # Try to detect an already-running server
         for _ in range(5):
@@ -638,7 +639,7 @@ class TestCrewAIRealServerIntegration(unittest.TestCase):
                 "id": f"{self.task_id_base}_multi_a",
                 "payload": {
                     "type": "text",
-                    "content": f"Card A from adapter",
+                    "content": "Card A from adapter",
                     "sender_id": "crewai_a",
                     "recipient_id": "crewai_b",
                     "card_type": "text",

@@ -725,6 +725,7 @@ class AutoGenAdapter(AutoGenAdapterBase):
     # ------------------------------------------------------------------
 
     def __init__(self) -> None:
+        """Initialize the AutoGen A2A adapter with default server settings."""
         self._server_url: str = ""
         self._host: str = "127.0.0.1"
         self._port: int = 8080

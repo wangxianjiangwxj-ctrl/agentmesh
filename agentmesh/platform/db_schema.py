@@ -1,5 +1,4 @@
-"""
-AgentMesh Platform — Shared DB schema (SQLite + WAL)
+"""AgentMesh Platform — Shared DB schema (SQLite + WAL).
 
 Covers all 5 MVP modules. All FKs at application-level (no DB-level FKs
 for testability). Schema v2 — unified after Phase 19 Day 1 alignment.
@@ -8,7 +7,6 @@ from __future__ import annotations
 
 import sqlite3
 from pathlib import Path
-from typing import Optional
 
 DEFAULT_DB = "agentmesh_platform.db"
 
@@ -191,6 +189,17 @@ CREATE TABLE IF NOT EXISTS audit_chain_heads (
 
 
 def init_db(db_path: str | Path = DEFAULT_DB) -> sqlite3.Connection:
+    """Initialise the unified platform database.
+
+    Creates all tables, indexes, and sets WAL journal mode.
+
+    Args:
+        db_path: Path to the SQLite database file (default:
+            ``agentmesh_platform.db``).
+
+    Returns:
+        A new SQLite connection with row factory and WAL mode enabled.
+    """
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
@@ -200,10 +209,25 @@ def init_db(db_path: str | Path = DEFAULT_DB) -> sqlite3.Connection:
 
 
 def get_conn(db_path: str | Path = DEFAULT_DB) -> sqlite3.Connection:
+    """Shortcut to create and initialise a database connection.
+
+    Args:
+        db_path: Path to the SQLite database file (default:
+            ``agentmesh_platform.db``).
+
+    Returns:
+        A new initialised SQLite connection.
+    """
     return init_db(db_path)
 
 
 def create_test_db() -> tuple[sqlite3.Connection, str]:
+    """Create a temporary database for testing.
+
+    Returns:
+        A tuple of (connection, file_path) pointing to a temp SQLite
+        database that has been initialised with the full schema.
+    """
     import tempfile
     f = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
     f.close()

@@ -21,7 +21,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "sdk"))
 
-from a2a_provider import MemoryProvider, A2AResult, A2AError
+from a2a_provider import A2AError, A2AResult, MemoryProvider
 
 # ------------------------------------------------------------------
 # Results directory

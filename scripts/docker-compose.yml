@@ -1,0 +1,18 @@
+# AgentMesh Docker Compose
+# Usage: docker compose -f scripts/docker-compose.yml up -d
+
+services:
+
+  agentmesh:
+    build:
+      context: ..
+      dockerfile: scripts/Dockerfile
+    image: agentmesh:latest
+    container_name: agentmesh
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - AGENTMESH_DB_DIR=/app/data
+    restart: unless-stopped

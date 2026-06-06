@@ -1,0 +1,51 @@
+# AgentMesh Health Check
+# 每次 push/pr 自动运行项目健康评分并输出到 CI 日志
+# 评分趋势监控优于单次阈值
+
+name: Health Check
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1"  # 每周一 06:00 UTC = 14:00 CST
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  health-report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          pip install ruff pytest pytest-cov
+      - name: Run ruff check
+        continue-on-error: true
+        run: |
+          ruff check --statistics . || true
+      - name: Run tests with coverage
+        continue-on-error: true
+        run: |
+          python -m pytest tests/ \
+            --ignore=tests/benchmarks \
+            --ignore=tests/e2e \
+            --cov=agentmesh \
+            --cov-report=term-missing \
+            -q --tb=short || true
+      - name: Generate health report
+        run: |
+          python scripts/project_health_report.py
+      - name: Upload health report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: health-report
+          path: project-health-report-*.md
+          retention-days: 90

@@ -6,10 +6,9 @@ import tempfile
 from pathlib import Path
 
 import pytest
-
+from audit_chain import AuditChainService
 from db_schema import create_test_db
 from identity import IdentityService
-from audit_chain import AuditChainService
 
 
 @pytest.fixture
@@ -29,6 +28,7 @@ def services():
 
 class TestAuditChain:
     def test_record_entry(self, services):
+        """Verify recording an audit entry returns a valid record with chain index."""
         identity, audit = services
         alice = identity.register("Alice")
         payload = {"task_id": "t-001", "action": "publish"}
@@ -46,6 +46,7 @@ class TestAuditChain:
         assert entry.chain_prev_hash is None  # first entry
 
     def test_double_sign_entry(self, services):
+        """Verify recording an entry with both actor and receiver signatures succeeds."""
         identity, audit = services
         alice = identity.register("Alice")
         bob = identity.register("Bob")
@@ -63,6 +64,7 @@ class TestAuditChain:
         assert entry.receiver_sig != entry.sender_sig
 
     def test_hash_chain_links_entries(self, services):
+        """Verify each entry's hash links to the previous entry."""
         identity, audit = services
         alice = identity.register("Alice")
         bob = identity.register("Bob")
@@ -77,6 +79,7 @@ class TestAuditChain:
         assert e3.chain_prev_hash == e2.chain_hash
 
     def test_verify_chain_valid(self, services):
+        """Verify that an unmodified audit chain passes verification."""
         identity, audit = services
         alice = identity.register("Alice")
         bob = identity.register("Bob")
@@ -90,6 +93,7 @@ class TestAuditChain:
         assert all(e["chain_ok"] for e in chain)
 
     def test_tampered_hash_detected(self, services):
+        """Verify that tampering with an entry's hash causes verification to fail."""
         identity, audit = services
         alice = identity.register("Alice")
         payload = {"task_id": "t-001", "action": "publish"}
@@ -106,6 +110,7 @@ class TestAuditChain:
         assert not chain[0]["chain_ok"]
 
     def test_payload_signature_verification(self, services):
+        """Verify that tampering with the payload signature causes verification to fail."""
         identity, audit = services
         alice = identity.register("Alice")
         payload = {"task_id": "t-001", "reward": 100}
@@ -117,6 +122,7 @@ class TestAuditChain:
         assert not audit.verify_signature_for_audit(alice["agent_id"], {"task_id": "t-002"}, entry.sender_sig)
 
     def test_query_by_task(self, services):
+        """Verify querying audit entries by task ID returns matching records."""
         identity, audit = services
         alice = identity.register("Alice")
         audit.record("t-001", "publish", alice["agent_id"], {"action": "a"})
@@ -127,6 +133,7 @@ class TestAuditChain:
         assert len(logs) == 2
 
     def test_query_by_actor(self, services):
+        """Verify querying audit entries by actor ID returns matching records."""
         identity, audit = services
         alice = identity.register("Alice")
         bob = identity.register("Bob")
@@ -136,3 +143,49 @@ class TestAuditChain:
 
         logs = audit.get_by_actor(alice["agent_id"])
         assert len(logs) == 2
+
+    def test_record_missing_actor_key(self, services):
+        """record raises ValueError when actor has no private key."""
+        identity, audit = services
+        alice = identity.register("Alice")
+        # Delete the private key entry
+        audit.conn.execute(
+            "DELETE FROM agent_private_keys WHERE agent_id = ?",
+            (alice["agent_id"],),
+        )
+        audit.conn.commit()
+        with pytest.raises(ValueError, match="Private key not found for actor"):
+            audit.record("t-001", "publish", alice["agent_id"], {"x": 1})
+
+    def test_record_missing_receiver_key(self, services):
+        """record raises ValueError when receiver has no private key."""
+        identity, audit = services
+        alice = identity.register("Alice")
+        bob = identity.register("Bob")
+        # Delete Bob's private key
+        audit.conn.execute(
+            "DELETE FROM agent_private_keys WHERE agent_id = ?",
+            (bob["agent_id"],),
+        )
+        audit.conn.commit()
+        with pytest.raises(ValueError, match="Private key not found for receiver"):
+            audit.record("t-001", "assign", alice["agent_id"], {"x": 1},
+                         receiver_id=bob["agent_id"])
+
+    def test_verify_entry(self, services):
+        """verify_entry returns True for a valid entry."""
+        identity, audit = services
+        alice = identity.register("Alice")
+        entry = audit.record("t-001", "publish", alice["agent_id"], {"a": 1})
+        assert audit.verify_entry(entry) is True
+
+    def test_verify_chain_empty(self, services):
+        """verify_chain returns empty list for non-existent task."""
+        _, audit = services
+        chain = audit.verify_chain("nonexistent")
+        assert chain == []
+
+    def test_verify_signature_for_audit_missing_agent(self, services):
+        """verify_signature_for_audit returns False for unknown agent."""
+        _, audit = services
+        assert audit.verify_signature_for_audit("bogus", {"x": 1}, "sig") is False

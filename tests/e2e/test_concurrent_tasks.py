@@ -13,10 +13,10 @@ Phase 14, Direction A (真实集成测试)
 import json
 import os
 import sys
-import time
 import threading
-import urllib.request
+import time
 import urllib.error
+import urllib.request
 
 SERVER_URL = os.environ.get("A2A_SERVER_URL", "http://localhost:8000")
 A2A_ENDPOINT = f"{SERVER_URL}/a2a"
@@ -125,7 +125,7 @@ def test_concurrent_submission():
 
     print(f"  ✅ {total_checked}/{total_checked} concurrent tasks completed in {elapsed:.2f}s")
     print(f"     Avg {(elapsed / total_checked):.2f}s per task")
-    print(f"     All task IDs unique: ✅")
+    print("     All task IDs unique: ✅")
 
 
 # ---------------------------------------------------------------------------

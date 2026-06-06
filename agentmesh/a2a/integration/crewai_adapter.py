@@ -34,7 +34,9 @@ from typing import Any, Dict, List, Optional, Protocol, TypeVar
 T = TypeVar("T")
 
 CardPayload = Dict[str, Any]
+"""Type alias for the payload of an A2A Card."""
 CardMetadata = Dict[str, Any]
+"""Type alias for optional metadata attached to an A2A Card."""
 
 
 # ---------------------------------------------------------------------------
@@ -559,6 +561,7 @@ class CrewAIAdapter(CrewAIAdapterBase):
     # ------------------------------------------------------------------
 
     def __init__(self) -> None:
+        """Initialize the CrewAI A2A adapter with default server settings."""
         self._server_url: str = ""
         self._host: str = "127.0.0.1"
         self._port: int = 8080

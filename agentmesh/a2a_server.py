@@ -138,6 +138,13 @@ class A2AServerError(Exception):
         message: Human-readable error description
     """
     def __init__(self, status_code: int, code: str, message: str) -> None:
+        """Initialize an A2AServerError.
+
+        Args:
+            status_code: HTTP status code (400, 404, 500, etc.).
+            code: Machine-readable error code string.
+            message: Human-readable error description.
+        """
         self.status_code = status_code
         self.code = code
         self.message = message
@@ -215,6 +222,11 @@ class A2AResponse:
     task_state: Optional[str] = None
 
     def to_json(self) -> str:
+        """Serialize the response to a JSON string.
+
+        Returns:
+            JSON string representation of the response.
+        """
         return json.dumps({
             "success": self.success,
             "data": self.data,
@@ -224,6 +236,14 @@ class A2AResponse:
 
     @classmethod
     def from_json(cls, raw: str) -> A2AResponse:
+        """Deserialize a JSON string into an A2AResponse.
+
+        Args:
+            raw: JSON string to parse.
+
+        Returns:
+            A2AResponse instance parsed from the string.
+        """
         d = json.loads(raw)
         return cls(
             success=d["success"],
@@ -659,23 +679,64 @@ class HttpProvider(A2AProvider):
     # ---- A2AProvider interface ----
 
     def send_message(self, task: dict, auth: Optional[dict] = None) -> A2AResult:
+        """Send a task message to the remote A2A server.
+
+        Args:
+            task: Task dict with at least an "id" field.
+            auth: Optional authentication dict.
+
+        Returns:
+            A2AResult indicating success or failure.
+        """
         payload: dict = {"task": task, "auth": auth}
         resp: dict = self._post("/send", payload)
         return self._to_result(resp)
 
     def get_task(self, task_id: str, auth: Optional[dict] = None) -> A2AResult:
+        """Retrieve a task from the remote A2A server.
+
+        Args:
+            task_id: The task identifier to retrieve.
+            auth: Optional authentication dict.
+
+        Returns:
+            A2AResult with task data or error.
+        """
         resp: dict = self._get(f"/task/{task_id}")
         return self._to_result(resp)
 
     def cancel_task(self, task_id: str, auth: Optional[dict] = None) -> A2AResult:
+        """Cancel a task on the remote A2A server.
+
+        Args:
+            task_id: The task identifier to cancel.
+            auth: Optional authentication dict.
+
+        Returns:
+            A2AResult indicating success or failure.
+        """
         resp: dict = self._post(f"/cancel/{task_id}", {})
         return self._to_result(resp)
 
     def ping(self) -> A2AResult:
+        """Check server health via the /ping endpoint.
+
+        Returns:
+            A2AResult with server status information.
+        """
         resp: dict = self._get("/ping")
         return self._to_result(resp)
 
     def register_agent(self, name: str, skills: Optional[List[str]] = None) -> A2AResult:
+        """Register an agent on the remote A2A server.
+
+        Args:
+            name: Agent name.
+            skills: List of skill labels.
+
+        Returns:
+            A2AResult indicating success or failure.
+        """
         resp: dict = self._post("/agents", {"name": name, "skills": skills or []})
         return self._to_result(resp)
 
@@ -1126,6 +1187,12 @@ def _run_test(port: int):
 
 
 def main():
+    """Entry point for the A2A server CLI.
+
+    Parses arguments and dispatches to the appropriate command:
+    - ``server``: Start the A2A HTTP server.
+    - ``test``: Run protocol tests against a running server.
+    """
     import argparse
 
     parser = argparse.ArgumentParser(description="AgentMesh A2A Test Server")

@@ -490,7 +490,8 @@ class TestAutoGenRealServerIntegration(unittest.TestCase):
         cls._server_port = int(os.environ.get("A2A_SERVER_PORT", "8089"))
         cls.server_url = f"http://localhost:{cls._server_port}"
 
-        import urllib.request, urllib.error
+        import urllib.error
+        import urllib.request
 
         # Try to detect an already-running server
         for _ in range(5):

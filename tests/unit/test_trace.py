@@ -20,6 +20,7 @@ from agentmesh.a2a._trace import (
 
 class TestTraceContext:
     def test_create_root_context(self) -> None:
+        """Verify creating a root TraceContext generates valid IDs."""
         ctx = TraceContext(
             trace_id="a" * 32,
             parent_span_id="",
@@ -31,6 +32,7 @@ class TestTraceContext:
         assert ctx.baggage == {}
 
     def test_create_with_baggage(self) -> None:
+        """Verify creating a TraceContext with baggage preserves the baggage."""
         ctx = TraceContext(
             trace_id="a" * 32,
             parent_span_id="",
@@ -41,18 +43,22 @@ class TestTraceContext:
         assert ctx.baggage["region"] == "us-east"
 
     def test_invalid_trace_id_short(self) -> None:
+        """Verify a short trace_id raises ValueError."""
         with pytest.raises(ValueError, match="trace_id"):
             TraceContext(trace_id="a" * 31, parent_span_id="", span_id="b" * 16)
 
     def test_invalid_trace_id_long(self) -> None:
+        """Verify a long trace_id raises ValueError."""
         with pytest.raises(ValueError, match="trace_id"):
             TraceContext(trace_id="a" * 33, parent_span_id="", span_id="b" * 16)
 
     def test_invalid_span_id(self) -> None:
+        """Verify an invalid span_id raises ValueError."""
         with pytest.raises(ValueError, match="span_id"):
             TraceContext(trace_id="a" * 32, parent_span_id="", span_id="b" * 15)
 
     def test_invalid_parent_span_id(self) -> None:
+        """Verify an invalid parent_span_id raises ValueError."""
         with pytest.raises(ValueError, match="parent_span_id"):
             TraceContext(
                 trace_id="a" * 32,
@@ -61,7 +67,9 @@ class TestTraceContext:
             )
 
     def test_non_hex_trace_id(self) -> None:
+        """test_non_hex_trace_id."""
         with pytest.raises(ValueError):
+            """Test that non hex trace id works correctly."""
             TraceContext(
                 trace_id="z" * 32,
                 parent_span_id="",
@@ -69,17 +77,20 @@ class TestTraceContext:
             )
 
     def test_frozen_immutable(self) -> None:
+        """test_frozen_immutable."""
         ctx = TraceContext(
             trace_id="a" * 32,
             parent_span_id="",
             span_id="b" * 16,
         )
         with pytest.raises(AttributeError):
+            """Test that frozen immutable works correctly."""
             ctx.trace_id = "c" * 32  # type: ignore[misc]
 
     # -- Serialisation round-trip -----------------------------------------
 
     def test_to_header(self) -> None:
+        """test_to_header."""
         ctx = TraceContext(
             trace_id="a" * 32,
             parent_span_id="",
@@ -93,6 +104,7 @@ class TestTraceContext:
         assert hdrs["baggage"] == "k=v"
 
     def test_from_header_valid(self) -> None:
+        """test_from_header_valid."""
         hdrs = {
             "trace_id": "a" * 32,
             "parent_span_id": "b" * 16,
@@ -112,6 +124,7 @@ class TestTraceContext:
         assert TraceContext.from_header({"span_id": "b" * 16}) is None
 
     def test_from_header_empty_trace_id(self) -> None:
+        """Verify from_header returns None for empty trace_id."""
         assert TraceContext.from_header({"trace_id": "", "span_id": "b" * 16}) is None
 
     def test_from_header_malformed_baggage(self) -> None:
@@ -126,6 +139,7 @@ class TestTraceContext:
         assert ctx.baggage == {}
 
     def test_roundtrip(self) -> None:
+        """test_roundtrip."""
         original = TraceContext(
             trace_id="a" * 32,
             parent_span_id="b" * 16,
@@ -138,6 +152,7 @@ class TestTraceContext:
     # -- Child spans -------------------------------------------------------
 
     def test_new_child(self) -> None:
+        """test_new_child."""
         parent = TraceContext(
             trace_id="a" * 32,
             parent_span_id="",
@@ -150,6 +165,7 @@ class TestTraceContext:
         assert len(child.span_id) == 16
 
     def test_child_preserves_baggage(self) -> None:
+        """test_child_preserves_baggage."""
         parent = TraceContext(
             trace_id="a" * 32,
             parent_span_id="",
@@ -173,6 +189,7 @@ class TestTraceContext:
     # -- with_baggage -----------------------------------------------------
 
     def test_with_baggage_immutability(self) -> None:
+        """test_with_baggage_immutability."""
         ctx = TraceContext(
             trace_id="a" * 32,
             parent_span_id="",
@@ -192,6 +209,7 @@ class TestTraceContext:
 
 class TestTraceProvider:
     def test_new_context(self) -> None:
+        """Verify TraceProvider.new_context creates a fresh root context."""
         provider = TraceProvider()
         ctx = provider.new_context()
         assert len(ctx.trace_id) == 32
@@ -199,6 +217,7 @@ class TestTraceProvider:
         assert ctx.parent_span_id == ""
 
     def test_new_context_with_baggage(self) -> None:
+        """test_unique_trace_ids."""
         provider = TraceProvider()
         ctx = provider.new_context(baggage={"from": "provider"})
         assert ctx.baggage == {"from": "provider"}
@@ -213,6 +232,7 @@ class TestTraceProvider:
         assert len(ids) == 100
 
     def test_child_context(self) -> None:
+        """Verify creating a child context preserves the trace_id."""
         provider = TraceProvider()
         parent = provider.new_context()
         child = provider.child_context(parent)
@@ -220,6 +240,7 @@ class TestTraceProvider:
         assert child.parent_span_id == parent.span_id
 
     def test_child_context_with_extra_baggage(self) -> None:
+        """test_inject."""
         provider = TraceProvider()
         parent = provider.new_context(baggage={"base": "val"})
         child = provider.child_context(parent, baggage={"extra": "data"})
@@ -227,6 +248,7 @@ class TestTraceProvider:
         assert child.baggage["extra"] == "data"
 
     def test_inject(self) -> None:
+        """test_inject_default_headers."""
         provider = TraceProvider()
         ctx = provider.new_context()
         headers = {"content-type": "application/json"}
@@ -236,12 +258,14 @@ class TestTraceProvider:
         assert result["span_id"] == ctx.span_id
 
     def test_inject_default_headers(self) -> None:
+        """test_extract."""
         provider = TraceProvider()
         ctx = provider.new_context()
         headers = provider.inject(ctx)
         assert "trace_id" in headers
 
     def test_extract(self) -> None:
+        """test_extract_none."""
         provider = TraceProvider()
         ctx = provider.new_context()
         headers = provider.inject(ctx)
@@ -250,6 +274,7 @@ class TestTraceProvider:
         assert extracted.trace_id == ctx.trace_id
 
     def test_extract_none(self) -> None:
+        """test_sets_current_context."""
         assert TraceProvider.extract({}) is None
 
 
@@ -267,10 +292,22 @@ class TestWithTraceContext:
         )
         assert TraceProvider.get_current_context() is None
         with with_trace_context(ctx):
+            """test_auto_generates_context."""
+            """Test that new context with baggage works correctly."""
+            """Test that with baggage immutability works correctly."""
+            """Test that child baggage independent works correctly."""
+            """Test that child preserves baggage works correctly."""
+            """Test that new child works correctly."""
+            """Test that roundtrip works correctly."""
+            """Test that from header malformed baggage works correctly."""
+            """Test that from header missing fields works correctly."""
+            """Test that from header valid works correctly."""
+            """Test that to header works correctly."""
             assert TraceProvider.get_current_context() is ctx
         assert TraceProvider.get_current_context() is None
 
     def test_auto_generates_context(self) -> None:
+        """worker."""
         with with_trace_context() as ctx:
             assert ctx is not None
             assert len(ctx.trace_id) == 32
@@ -284,6 +321,7 @@ class TestWithTraceContext:
         captured_thread: list[str] = []
 
         def worker() -> None:
+            """test_restores_previous_context."""
             captured_thread.append(
                 str(TraceProvider.get_current_context() is not None)
             )
@@ -299,6 +337,7 @@ class TestWithTraceContext:
         assert captured_thread == ["False"]
 
     def test_restores_previous_context(self) -> None:
+        """test_nested_restores_on_exception."""
         outer = TraceProvider().new_context()
         inner = TraceContext(
             trace_id="c" * 32,
@@ -308,6 +347,7 @@ class TestWithTraceContext:
 
         with with_trace_context(outer):
             with with_trace_context(inner):
+                """test_provider_argument."""
                 assert TraceProvider.get_current_context() is inner
             assert TraceProvider.get_current_context() is outer
         assert TraceProvider.get_current_context() is None
@@ -320,11 +360,13 @@ class TestWithTraceContext:
                     assert TraceProvider.get_current_context() is inner_ctx
                     raise RuntimeError("boom")
         except RuntimeError:
+            """test_context_manager_yields_correct_ctx."""
             pass
         # outer should be restored after the inner block's exception
         assert TraceProvider.get_current_context() is None
 
     def test_provider_argument(self) -> None:
+        """test_baggage_encode_decode_roundtrip."""
         provider = TraceProvider()
         with with_trace_context(provider=provider) as ctx:
             assert len(ctx.trace_id) == 32
@@ -337,6 +379,7 @@ class TestWithTraceContext:
 
 
 class TestEdgeCases:
+    """test_baggage_empty."""
     def test_context_manager_yields_correct_ctx(self) -> None:
         ctx = TraceProvider().new_context()
         with with_trace_context(ctx) as yielded:

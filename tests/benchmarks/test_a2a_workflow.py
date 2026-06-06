@@ -4,13 +4,14 @@ Benchmarks the actual A2A provider classes: MemoryProvider, A2ATaskManager, A2AF
 """
 
 import pytest
+
+from agentmesh.a2a_models import ServerTimeoutConfig
 from agentmesh.a2a_provider import (
+    A2AFacade,
     A2AResult,
     A2ATaskManager,
     MemoryProvider,
-    A2AFacade,
 )
-from agentmesh.a2a_models import ServerTimeoutConfig
 
 
 class TestA2AProviderBenchmarks:

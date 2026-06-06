@@ -20,21 +20,22 @@ Design:
 
 from __future__ import annotations
 
-import sys
 import os
+import sys
 import time
 
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "agentmesh"))
 
-from agentmesh.a2a_provider import A2AFacade, MemoryProvider, A2AResult
+from agentmesh.a2a_provider import A2AFacade, A2AResult, MemoryProvider
 from tests.perf.conftest import (
     LATENCY_THRESHOLDS as T,
-    measure_latency,
-    get_rss_mb,
 )
-
+from tests.perf.conftest import (
+    get_rss_mb,
+    measure_latency,
+)
 
 # ===================================================================
 # MemoryProvider — Latency Baselines

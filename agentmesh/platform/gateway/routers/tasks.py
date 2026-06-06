@@ -4,17 +4,28 @@ All TaskMarketService methods are async, so route handlers use async def.
 """
 
 from typing import Optional
+
 from fastapi import APIRouter, HTTPException, Query, Request
-from starlette.responses import JSONResponse
 from pydantic import BaseModel
+from starlette.responses import JSONResponse
+from task_market_api import CreateTaskRequest, TaskStatus
 
 from ..deps import get_task_market_service
-from task_market_api import CreateTaskRequest, TaskStatus
 
 router = APIRouter()
 
 
 class CreateTaskBody(BaseModel):
+    """Request body for creating a new task.
+
+    Attributes:
+        title: Task title.
+        description: Optional task description.
+        escrow_amount: Number of points escrowed for this task.
+        publisher_share: Fraction of escrow returned to the publisher on release.
+        executor_share: Fraction of escrow paid to the executor on release.
+    """
+
     title: str
     description: str = ""
     escrow_amount: int = 0
@@ -23,25 +34,61 @@ class CreateTaskBody(BaseModel):
 
 
 class AssignTaskBody(BaseModel):
+    """Request body for assigning a task to an executor.
+
+    Attributes:
+        agent_id: Identifier of the agent to assign as executor.
+    """
+
     agent_id: str
 
 
 class DeliverTaskBody(BaseModel):
+    """Request body for delivering task output.
+
+    Attributes:
+        submission: URL or reference to the delivered work.
+        executor_id: Identifier of the delivering executor.
+    """
+
     submission: str  # delivery URL
     executor_id: str
 
 
 class VerifyTaskBody(BaseModel):
+    """Request body for verifying / rejecting a delivered task.
+
+    Attributes:
+        approved: Whether the delivery is approved.
+        publisher_id: Identifier of the publisher agent.
+    """
+
     approved: bool = True
     publisher_id: str
 
 
 class CancelTaskBody(BaseModel):
+    """Request body for cancelling a task.
+
+    Attributes:
+        agent_id: Identifier of the agent requesting cancellation.
+    """
+
     agent_id: str
 
 
 @router.post("/tasks")
 async def create_task(body: CreateTaskBody, request: Request):
+    """Create a new task in the marketplace.
+
+    Args:
+        body: Task creation payload.
+        request: The incoming HTTP request (provides agent context).
+
+    Returns:
+        JSON with ``task_id``, ``title``, ``status``, ``publisher_id``,
+        ``escrow_amount``, and ``created_at``.
+    """
     svc = get_task_market_service()
     publisher_id = getattr(request.state, "agent_id", "unknown")
     try:
@@ -76,6 +123,16 @@ async def list_tasks(
     status: Optional[str] = Query(None),
     agent_id: Optional[str] = Query(None),
 ):
+    """List tasks, optionally filtered by status or publisher.
+
+    Args:
+        request: The incoming HTTP request.
+        status: Optional status filter (e.g. ``"open"``, ``"assigned"``).
+        agent_id: Optional publisher agent ID filter.
+
+    Returns:
+        JSON with a ``tasks`` array containing task summaries.
+    """
     svc = get_task_market_service()
     task_status = None
     if status:
@@ -105,6 +162,14 @@ async def list_tasks(
 
 @router.get("/tasks/{task_id}")
 async def get_task(task_id: str):
+    """Retrieve a single task by its ID.
+
+    Args:
+        task_id: Task identifier.
+
+    Returns:
+        JSON with full task details, or 404 if not found.
+    """
     svc = get_task_market_service()
     task = await svc.get_task(task_id)
     if task is None:
@@ -130,6 +195,16 @@ async def get_task(task_id: str):
 
 @router.post("/tasks/{task_id}/assign")
 async def assign_task(task_id: str, body: AssignTaskBody, request: Request):
+    """Assign an executor to a task.
+
+    Args:
+        task_id: Task to assign.
+        body: Assignment payload with executor agent_id.
+        request: The incoming HTTP request.
+
+    Returns:
+        JSON with ``task_id``, ``agent_id``, and ``status``.
+    """
     svc = get_task_market_service()
     executor_id = body.agent_id
     try:
@@ -150,6 +225,15 @@ async def assign_task(task_id: str, body: AssignTaskBody, request: Request):
 
 @router.post("/tasks/{task_id}/deliver")
 async def deliver_task(task_id: str, body: DeliverTaskBody):
+    """Submit delivery for a task.
+
+    Args:
+        task_id: Task being delivered.
+        body: Delivery payload with submission URL and executor ID.
+
+    Returns:
+        JSON with ``task_id``, ``status``, and ``submission``.
+    """
     svc = get_task_market_service()
     try:
         task = await svc.deliver_task(
@@ -171,6 +255,15 @@ async def deliver_task(task_id: str, body: DeliverTaskBody):
 
 @router.post("/tasks/{task_id}/verify")
 async def verify_task(task_id: str, body: VerifyTaskBody):
+    """Verify or reject a delivered task.
+
+    Args:
+        task_id: Task to verify.
+        body: Verification payload with approval flag and publisher ID.
+
+    Returns:
+        JSON with ``task_id``, ``status``, and ``approved``.
+    """
     svc = get_task_market_service()
     try:
         task = await svc.verify_task(
@@ -192,6 +285,15 @@ async def verify_task(task_id: str, body: VerifyTaskBody):
 
 @router.post("/tasks/{task_id}/cancel")
 async def cancel_task(task_id: str, body: CancelTaskBody):
+    """Cancel a task.
+
+    Args:
+        task_id: Task to cancel.
+        body: Cancellation payload with requesting agent ID.
+
+    Returns:
+        JSON with ``task_id`` and updated ``status``.
+    """
     svc = get_task_market_service()
     try:
         task = await svc.cancel_task(task_id, body.agent_id, signature="gateway-sig")

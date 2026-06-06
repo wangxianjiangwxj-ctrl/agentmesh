@@ -20,18 +20,21 @@ from agentmesh.a2a._trace import TraceProvider, with_trace_context
 
 class TestLogLevel:
     def test_enum_values(self) -> None:
+        """Verify LogLevel enum values match their string representations."""
         assert LogLevel.DEBUG.value == "DEBUG"
         assert LogLevel.INFO.value == "INFO"
         assert LogLevel.WARN.value == "WARN"
         assert LogLevel.ERROR.value == "ERROR"
 
     def test_to_stdlib(self) -> None:
+        """Verify LogLevel.to_stdlib returns the correct stdlib logging level."""
         assert LogLevel.DEBUG.to_stdlib() == logging.DEBUG
         assert LogLevel.INFO.to_stdlib() == logging.INFO
         assert LogLevel.WARN.to_stdlib() == logging.WARN
         assert LogLevel.ERROR.to_stdlib() == logging.ERROR
 
     def test_from_stdlib(self) -> None:
+        """Verify LogLevel.from_stdlib reverse-maps stdlib levels correctly."""
         assert LogLevel.from_stdlib(logging.DEBUG) == LogLevel.DEBUG
         assert LogLevel.from_stdlib(logging.INFO) == LogLevel.INFO
         assert LogLevel.from_stdlib(logging.WARNING) == LogLevel.WARN
@@ -39,6 +42,7 @@ class TestLogLevel:
         assert LogLevel.from_stdlib(logging.CRITICAL) == LogLevel.ERROR
 
     def test_from_stdlib_zero(self) -> None:
+        """Verify from_stdlib returns DEBUG for level zero."""
         assert LogLevel.from_stdlib(0) == LogLevel.DEBUG
 
 
@@ -49,6 +53,7 @@ class TestLogLevel:
 
 class TestLoggerConfig:
     def test_default_config(self) -> None:
+        """Verify LoggerConfig has the expected default values."""
         cfg = LoggerConfig()
         assert cfg.level == LogLevel.INFO
         assert cfg.output == "stderr"
@@ -56,6 +61,7 @@ class TestLoggerConfig:
         assert cfg.extra_fields == {}
 
     def test_custom_config(self) -> None:
+        """Verify LoggerConfig accepts custom values."""
         cfg = LoggerConfig(
             level=LogLevel.DEBUG,
             output="stdout",
@@ -80,6 +86,7 @@ class TestStructuredLogger:
         level: LogLevel = LogLevel.DEBUG,
         extra_fields: dict | None = None,
     ) -> tuple[StructuredLogger, io.StringIO]:
+        """Helper to create a StructuredLogger with in-memory output for testing."""
         buf = io.StringIO()
         cfg = LoggerConfig(
             level=level,
@@ -96,6 +103,7 @@ class TestStructuredLogger:
         return log, buf
 
     def _parse(self, buf: io.StringIO) -> dict:
+        """_parse."""
         raw = buf.getvalue().strip()
         if not raw:
             return {}
@@ -104,6 +112,7 @@ class TestStructuredLogger:
     # -- Basic logging ----------------------------------------------------
 
     def test_info_log(self) -> None:
+        """test_info_log."""
         log, buf = self._make_logger()
         log.info("card_sent", message="Task dispatched")
         parsed = self._parse(buf)
@@ -114,6 +123,7 @@ class TestStructuredLogger:
         assert "timestamp" in parsed
 
     def test_debug_log(self) -> None:
+        """test_debug_log."""
         log, buf = self._make_logger()
         log.debug("debug_event")
         parsed = self._parse(buf)
@@ -121,18 +131,21 @@ class TestStructuredLogger:
         assert parsed["event"] == "debug_event"
 
     def test_warn_log(self) -> None:
+        """test_warn_log."""
         log, buf = self._make_logger()
         log.warn("warning_event")
         parsed = self._parse(buf)
         assert parsed["level"] == "WARN"
 
     def test_error_log(self) -> None:
+        """test_error_log."""
         log, buf = self._make_logger()
         log.error("error_event")
         parsed = self._parse(buf)
         assert parsed["level"] == "ERROR"
 
     def test_all_methods_emit(self) -> None:
+        """test_all_methods_emit."""
         log, buf = self._make_logger()
         log.debug("d")
         log.info("i")
@@ -144,6 +157,7 @@ class TestStructuredLogger:
     # -- Extra fields -----------------------------------------------------
 
     def test_extra_kwargs(self) -> None:
+        """test_extra_kwargs."""
         log, buf = self._make_logger()
         log.info("with_extra", peer="agent-a", msg_count=42)
         parsed = self._parse(buf)
@@ -151,6 +165,7 @@ class TestStructuredLogger:
         assert parsed["msg_count"] == 42
 
     def test_extra_fields_in_config(self) -> None:
+        """test_extra_fields_in_config."""
         log, buf = self._make_logger(extra_fields={"app": "mesh", "env": "test"})
         log.info("config_extra")
         parsed = self._parse(buf)
@@ -158,6 +173,7 @@ class TestStructuredLogger:
         assert parsed["env"] == "test"
 
     def test_per_call_extra_overrides_config(self) -> None:
+        """test_duration_ms."""
         log, buf = self._make_logger(extra_fields={"app": "default"})
         log.info("override_test", app="custom")
         parsed = self._parse(buf)
@@ -166,12 +182,14 @@ class TestStructuredLogger:
     # -- Duration ---------------------------------------------------------
 
     def test_duration_ms(self) -> None:
+        """test_duration_rounding."""
         log, buf = self._make_logger()
         log.info("timed_op", duration_ms=150.5)
         parsed = self._parse(buf)
         assert parsed["duration_ms"] == 150.5
 
     def test_duration_rounding(self) -> None:
+        """test_error_exception."""
         log, buf = self._make_logger()
         log.info("precise", duration_ms=0.1234567)
         parsed = self._parse(buf)
@@ -181,10 +199,12 @@ class TestStructuredLogger:
     # -- Error handling ---------------------------------------------------
 
     def test_error_exception(self) -> None:
+        """test_error_str."""
         log, buf = self._make_logger()
         try:
             raise ValueError("invalid input")
         except ValueError as exc:
+            """test_error_dict."""
             log.error("failed", error=exc)
         parsed = self._parse(buf)
         assert parsed["error"]["type"] == "ValueError"
@@ -197,6 +217,7 @@ class TestStructuredLogger:
         assert parsed["error"] == "connection timeout"
 
     def test_error_dict(self) -> None:
+        """test_trace_context_injected."""
         log, buf = self._make_logger()
         log.error("failed", error={"code": 503, "detail": "unavailable"})
         parsed = self._parse(buf)
@@ -209,12 +230,26 @@ class TestStructuredLogger:
         log, buf = self._make_logger()
         ctx = TraceProvider().new_context()
         with with_trace_context(ctx):
+            """Test that error dict works correctly."""
+            """Test that error str works correctly."""
+            """Test that error exception works correctly."""
+            """Test that duration rounding works correctly."""
+            """Test that duration ms works correctly."""
+            """Test that per call extra overrides config works correctly."""
+            """Test that extra fields in config works correctly."""
+            """Test that extra kwargs works correctly."""
+            """Test that all methods emit works correctly."""
+            """Test that error log works correctly."""
+            """Test that warn log works correctly."""
+            """Test that debug log works correctly."""
+            """Test that info log works correctly."""
             log.info("traced_op")
         parsed = self._parse(buf)
         assert parsed["trace_id"] == ctx.trace_id
         assert parsed["span_id"] == ctx.span_id
 
     def test_no_trace_context_when_none(self) -> None:
+        """test_trace_context_with_baggage."""
         log, buf = self._make_logger()
         log.info("no_trace")
         parsed = self._parse(buf)
@@ -222,9 +257,11 @@ class TestStructuredLogger:
         assert "span_id" not in parsed
 
     def test_trace_context_with_baggage(self) -> None:
+        """test_level_filtering_above_threshold."""
         log, buf = self._make_logger()
         ctx = TraceProvider().new_context(baggage={"env": "staging"})
         with with_trace_context(ctx):
+            """test_level_filtering_debug_allows_all."""
             log.info("baggage_test")
         parsed = self._parse(buf)
         assert parsed["trace_baggage"]["env"] == "staging"
@@ -241,6 +278,7 @@ class TestStructuredLogger:
         assert parsed["event"] == "should_appear"
 
     def test_level_filtering_debug_allows_all(self) -> None:
+        """test_global_configure."""
         log, buf = self._make_logger(level=LogLevel.DEBUG)
         log.debug("d")
         log.info("i")
@@ -264,23 +302,28 @@ class TestStructuredLogger:
             tmp_path = tmp.name
 
         try:
+            """test_empty_component_raises."""
             cfg = LoggerConfig(level=LogLevel.INFO, output=tmp_path)
             log = StructuredLogger("file-test", config=cfg)
             log.info("written_to_file")
 
             # Re-read and verify
             with open(tmp_path) as f:
+                """test_output_is_json."""
                 content = f.read().strip()
             parsed = json.loads(content)
             assert parsed["event"] == "written_to_file"
             assert parsed["component"] == "file-test"
         finally:
+            """test_unicode_content."""
             os.unlink(tmp_path)
 
     # -- Component name validation ----------------------------------------
 
     def test_empty_component_raises(self) -> None:
+        """test_non_serializable_value."""
         with pytest.raises(ValueError, match="component"):
+            """__str__."""
             StructuredLogger("")
 
     # -- JSON output format -----------------------------------------------

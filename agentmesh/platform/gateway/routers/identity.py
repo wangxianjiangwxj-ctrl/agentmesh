@@ -1,9 +1,14 @@
-"""Identity router — wraps IdentityService for agent registration and lookup."""
+"""Identity router — wraps IdentityService for agent registration and lookup.
+
+Provides REST endpoints for agent registration, retrieval by ID, and
+DID-based lookups.
+"""
+
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException
-from starlette.responses import JSONResponse
 from pydantic import BaseModel
-from typing import Optional
+from starlette.responses import JSONResponse
 
 from ..deps import get_identity_service
 
@@ -11,6 +16,14 @@ router = APIRouter()
 
 
 class RegisterAgentRequest(BaseModel):
+    """Request body for registering a new agent.
+
+    Attributes:
+        name: Human-readable alias for the agent.
+        auth_token: Optional authentication token (Feishu user_id / webhook secret).
+        metadata: Optional JSON-serialisable metadata dict.
+    """
+
     name: str
     auth_token: str = ""
     metadata: Optional[dict] = None
@@ -18,6 +31,18 @@ class RegisterAgentRequest(BaseModel):
 
 @router.post("/agents/register")
 def register_agent(body: RegisterAgentRequest):
+    """Register a new agent in the platform.
+
+    Generates an Ed25519 key pair, creates a DID, and persists the
+    agent record.
+
+    Args:
+        body: Registration request payload.
+
+    Returns:
+        JSON with ``agent_id``, ``did``, ``name``, ``public_key``,
+        and ``created_at``.
+    """
     svc = get_identity_service()
     result = svc.register(
         name=body.name,
@@ -41,6 +66,14 @@ def register_agent(body: RegisterAgentRequest):
 
 @router.get("/agents/{agent_id}")
 def get_agent(agent_id: str):
+    """Retrieve a registered agent by its ID.
+
+    Args:
+        agent_id: UUID of the agent to fetch.
+
+    Returns:
+        JSON with agent details, or 404 if not found.
+    """
     svc = get_identity_service()
     result = svc.get_agent(agent_id)
     if result is None:

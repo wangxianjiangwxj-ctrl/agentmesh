@@ -8,20 +8,24 @@ from gateway.deps import reset_db
 
 @pytest.fixture(autouse=True)
 def _reset():
+    """Reset database state before each test."""
     reset_db()
 
 
 @pytest.fixture
 def client():
+    """Create a FastAPI test client for gateway endpoint testing."""
     return TestClient(create_app())
 
 
 @pytest.fixture
 def headers():
+    """Default test API headers."""
     return {"X-API-Key": "test-key"}
 
 
 def test_create_task(client, headers):
+    """Test creating a new task with title, description, and escrow."""
     resp = client.post(
         "/api/v1/tasks",
         json={
@@ -41,6 +45,7 @@ def test_create_task(client, headers):
 
 
 def test_list_tasks(client, headers):
+    """Test listing tasks after creating one."""
     # Create a task first
     client.post(
         "/api/v1/tasks",

@@ -1,6 +1,7 @@
 """pytest configuration for E2E tests (Direction A — Real A2A Integration Testing)."""
 
 import os
+
 import pytest
 
 

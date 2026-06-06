@@ -31,18 +31,21 @@ class TestMessageFormat:
     """A2A message format compliance tests"""
 
     def test_task_requires_id(self):
+        """Verify that a task without an id raises an error."""
         provider = MemoryProvider()
         result = provider.send_message({"status": {"state": "submitted"}})
         assert result.success is False
         assert result.error.code == 400
 
     def test_well_formed_task_accepted(self):
+        """Verify that a well-formed task is accepted."""
         provider = MemoryProvider()
         task = {"id": "valid_001", "status": {"state": "submitted"}, "payload": {}}
         result = provider.send_message(task)
         assert result.success is True
 
     def test_task_state_preserved(self):
+        """Verify that the task state is preserved through the roundtrip."""
         provider = MemoryProvider()
         task = {"id": "state_001", "status": {"state": "working"}, "payload": {}}
         provider.send_message(task)
@@ -50,6 +53,7 @@ class TestMessageFormat:
         assert result.data["status"]["state"] == "working"
 
     def test_custom_fields_preserved(self):
+        """Verify that custom fields are preserved through serialisation."""
         provider = MemoryProvider()
         task = {
             "id": "custom_001",
@@ -67,20 +71,24 @@ class TestA2AErrorHandling:
     """A2A protocol error handling tests"""
 
     def test_error_with_code_and_message(self):
+        """Verify error includes both code and message fields."""
         error = A2AError(404, "Task not found")
         assert error.code == 404
         assert "not found" in error.message.lower()
 
     def test_error_string_representation(self):
+        """Verify error string representation includes code and message."""
         error = A2AError(400, "Bad request")
         assert "[400]" in str(error)
         assert "Bad request" in str(error)
 
     def test_recoverable_error(self):
+        """Verify that a recoverable error is marked as such."""
         error = A2AError(503, "Service unavailable", recoverable=True)
         assert error.recoverable is True
 
     def test_non_recoverable_error(self):
+        """Verify that a non-recoverable error is correctly identified."""
         error = A2AError(500, "Fatal")
         assert error.recoverable is False
 
@@ -121,12 +129,14 @@ class TestTaskStateMachine:
         ],
     )
     def test_invalid_transitions_rejected(self, from_state, to_state):
+        """Verify that invalid state transitions are rejected."""
         mgr = A2ATaskManager()
         mgr.track("t", from_state)
         with pytest.raises(A2AError):
             mgr.update_state("t", to_state)
 
     def test_canceled_is_terminal(self):
+        """Verify that canceled is a terminal state."""
         mgr = A2ATaskManager()
         mgr.track("t", A2ATaskState.CANCELED)
         with pytest.raises(A2AError):

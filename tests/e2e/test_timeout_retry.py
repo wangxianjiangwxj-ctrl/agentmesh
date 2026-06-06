@@ -29,9 +29,9 @@ import sys
 import threading
 import time
 import unittest
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Optional
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 # ---------------------------------------------------------------------------
 # Import project modules
@@ -40,28 +40,42 @@ from unittest.mock import patch, MagicMock
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 try:
-    from agentmesh.a2a_server import (
-        HttpProvider, SSEStream, ServerTimeoutConfig,
-        _build_app, _timeout_config,
-    )
+    from agentmesh.a2a_models import DEFAULT_RETRY_CONFIG, DEFAULT_TIMEOUT_CONFIG, RetryConfig
     from agentmesh.a2a_provider import (
-        A2AResult, A2AError, A2AProvider,
-        with_retry, _should_retry_on_status,
-        _should_retry_on_error, _backoff_sleep,
+        A2AError,
+        A2AProvider,
+        A2AResult,
+        _backoff_sleep,
+        _should_retry_on_error,
+        _should_retry_on_status,
+        with_retry,
     )
-    from agentmesh.a2a_models import RetryConfig, DEFAULT_RETRY_CONFIG, DEFAULT_TIMEOUT_CONFIG
+    from agentmesh.a2a_server import (
+        HttpProvider,
+        ServerTimeoutConfig,
+        SSEStream,
+        _build_app,
+        _timeout_config,
+    )
 except ImportError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-    from agentmesh.a2a_server import (
-        HttpProvider, SSEStream, ServerTimeoutConfig,
-        _build_app, _timeout_config,
-    )
+    from agentmesh.a2a_models import DEFAULT_RETRY_CONFIG, DEFAULT_TIMEOUT_CONFIG, RetryConfig
     from agentmesh.a2a_provider import (
-        A2AResult, A2AError, A2AProvider,
-        with_retry, _should_retry_on_status,
-        _should_retry_on_error, _backoff_sleep,
+        A2AError,
+        A2AProvider,
+        A2AResult,
+        _backoff_sleep,
+        _should_retry_on_error,
+        _should_retry_on_status,
+        with_retry,
     )
-    from agentmesh.a2a_models import RetryConfig, DEFAULT_RETRY_CONFIG, DEFAULT_TIMEOUT_CONFIG
+    from agentmesh.a2a_server import (
+        HttpProvider,
+        ServerTimeoutConfig,
+        SSEStream,
+        _build_app,
+        _timeout_config,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -139,8 +153,8 @@ def _start_server_with_timeout(
     )
     _TIMEOUT_SERVER_PROCS.append(proc)
 
-    import urllib.request
     import urllib.error
+    import urllib.request
 
     for _ in range(30):
         try:

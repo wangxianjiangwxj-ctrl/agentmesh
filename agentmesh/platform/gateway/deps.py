@@ -1,5 +1,4 @@
-"""
-Gateway dependency injection — connects FastAPI routes to real module services.
+"""Gateway dependency injection — connects FastAPI routes to real module services.
 
 Initializes a shared SQLite database (temp file or :memory:) and creates
 all service instances (IdentityService, EscrowService, EvidenceChainService,
@@ -9,10 +8,9 @@ ReviewService, TaskMarketService) using the db_schema.py unified schema.
 from __future__ import annotations
 
 import os
+import sqlite3
 import sys
 import tempfile
-import sqlite3
-from pathlib import Path
 from typing import Optional
 
 # ── Import real modules — local platform-agentmesh first, then task_market ──
@@ -29,8 +27,9 @@ _tm_dir = os.path.join(_base_dir, 'platform-agentmesh')
 if _tm_dir not in sys.path:
     sys.path.append(_tm_dir)  # append, NOT insert(0) — local takes priority
 
-from db_schema import SCHEMA_SQL
 import identity
+from db_schema import SCHEMA_SQL
+
 # Monkey-patch identity module to use check_same_thread=False (needed for TestClient)
 _orig_identity_init = identity.init_db
 def _patched_identity_init(db_path):
@@ -42,14 +41,14 @@ def _patched_identity_init(db_path):
     return conn
 identity.init_db = _patched_identity_init
 
-from identity import IdentityService
 from escrow import EscrowService
 from evidence_chain import EvidenceChainService
+from identity import IdentityService
 from reputation import ReviewService
 from task_market_api import (
-    TaskMarketService,
     InMemoryTaskRepository,
     MockSignatureVerifier,
+    TaskMarketService,
 )
 
 # ── Global lazy singletons ────────────────────────────────────────────────
@@ -67,7 +66,15 @@ _task_market_svc: Optional[TaskMarketService] = None
 
 
 def init_db(db_path: str = ":memory:") -> sqlite3.Connection:
-    """Create a fresh SQLite connection and run the unified schema."""
+    """Create a fresh SQLite connection and run the unified schema.
+
+    Args:
+        db_path: Filesystem path or ``":memory:"`` for the database.
+            Defaults to ``":memory:"``.
+
+    Returns:
+        A new SQLite connection with the full AgentMesh schema applied.
+    """
     global _db_path
     _db_path = db_path
     conn = sqlite3.connect(db_path, check_same_thread=False)
@@ -79,7 +86,11 @@ def init_db(db_path: str = ":memory:") -> sqlite3.Connection:
 
 
 def get_db() -> sqlite3.Connection:
-    """Lazy-initialized shared DB connection."""
+    """Return the lazy-initialised shared DB connection.
+
+    Returns:
+        The global shared SQLite connection.
+    """
     global _db
     if _db is None:
         _db = init_db(_db_path)
@@ -87,7 +98,11 @@ def get_db() -> sqlite3.Connection:
 
 
 def reset_db() -> None:
-    """Close and clear all singletons (used in tests)."""
+    """Close and clear all singletons (used in tests).
+
+    Resets all global service and connection references so the next
+    call to any ``get_*`` function creates fresh instances.
+    """
     global _db, _identity_svc, _escrow_svc, _evidence_svc, _review_svc, _task_market_svc
     global _db_path
     for svc in (_identity_svc,):
@@ -111,7 +126,11 @@ def reset_db() -> None:
 
 
 def get_temp_db_path() -> str:
-    """Create a temp file for the shared DB and return its path."""
+    """Create a temp file for the shared DB and return its path.
+
+    Returns:
+        Absolute path to a new temporary ``.db`` file.
+    """
     f = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
     f.close()
     return f.name
@@ -121,7 +140,15 @@ def get_temp_db_path() -> str:
 
 
 def get_identity_service() -> IdentityService:
-    """Lazy-init IdentityService. Uses the shared DB file path."""
+    """Return the lazy-initialised IdentityService singleton.
+
+    If the DB is currently in-memory, it migrates to a temp file so
+    that IdentityService (which opens its own connection) uses the
+    same persistent store.
+
+    Returns:
+        The global IdentityService instance.
+    """
     global _identity_svc, _db, _db_path
     if _identity_svc is None:
         # IdentityService opens its own connection but needs the same DB file
@@ -137,7 +164,11 @@ def get_identity_service() -> IdentityService:
 
 
 def get_escrow_service() -> EscrowService:
-    """Lazy-init EscrowService."""
+    """Return the lazy-initialised EscrowService singleton.
+
+    Returns:
+        The global EscrowService instance.
+    """
     global _escrow_svc
     if _escrow_svc is None:
         _escrow_svc = EscrowService(
@@ -148,7 +179,11 @@ def get_escrow_service() -> EscrowService:
 
 
 def get_evidence_service() -> EvidenceChainService:
-    """Lazy-init EvidenceChainService."""
+    """Return the lazy-initialised EvidenceChainService singleton.
+
+    Returns:
+        The global EvidenceChainService instance.
+    """
     global _evidence_svc
     if _evidence_svc is None:
         _evidence_svc = EvidenceChainService(
@@ -159,7 +194,11 @@ def get_evidence_service() -> EvidenceChainService:
 
 
 def get_review_service() -> ReviewService:
-    """Lazy-init ReviewService."""
+    """Return the lazy-initialised ReviewService singleton.
+
+    Returns:
+        The global ReviewService instance.
+    """
     global _review_svc
     if _review_svc is None:
         _review_svc = ReviewService(
@@ -171,7 +210,13 @@ def get_review_service() -> ReviewService:
 
 
 def get_task_market_service() -> TaskMarketService:
-    """Lazy-init TaskMarketService with in-memory repo + mock sig verifier."""
+    """Return the lazy-initialised TaskMarketService singleton.
+
+    Uses an in-memory repository and mock signature verifier.
+
+    Returns:
+        The global TaskMarketService instance.
+    """
     global _task_market_svc
     if _task_market_svc is None:
         _task_market_svc = TaskMarketService(

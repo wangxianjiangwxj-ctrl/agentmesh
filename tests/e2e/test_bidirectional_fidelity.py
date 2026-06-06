@@ -14,8 +14,8 @@ import json
 import os
 import sys
 import time
-import urllib.request
 import urllib.error
+import urllib.request
 
 SERVER_URL = os.environ.get("A2A_SERVER_URL", "http://localhost:8000")
 A2A_ENDPOINT = f"{SERVER_URL}/a2a"
@@ -178,7 +178,7 @@ def test_message_integrity():
     result_str = json.dumps(final_result, ensure_ascii=False)
     assert test_id in result_str, \
         f"Test ID not preserved in response! Metadata lost at protocol boundary.\nResponse: {result_str[:500]}"
-    print(f"  ✅ Message integrity verified — test_id preserved through round-trip")
+    print("  ✅ Message integrity verified — test_id preserved through round-trip")
 
 
 # ---------------------------------------------------------------------------

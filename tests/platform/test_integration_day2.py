@@ -8,17 +8,16 @@ AgentMesh Phase 19 Day 2 — 集成测试
 """
 from __future__ import annotations
 
+import os
 import tempfile
 import uuid
-import os
 from pathlib import Path
 
 import pytest
-
 from db_schema import init_db
-from identity import IdentityService
-from evidence_chain import EvidenceChainService
 from escrow import EscrowService
+from evidence_chain import EvidenceChainService
+from identity import IdentityService
 from reputation import ReviewService
 
 # ─── 共享 Fixture ─────────────────────────────────────
@@ -115,7 +114,7 @@ def test_tc02_escrow_hold_release(svc):
     assert result["publisher_return"] <= 50   # 10% of 500
 
     bob_acct = svc["identity"].get_agent(bob["agent_id"])
-    print(f"[TC-02] ✅ hold+release OK")
+    print("[TC-02] ✅ hold+release OK")
 
 
 def test_tc03_review_and_reputation(svc):
@@ -185,7 +184,7 @@ def test_tc05_schema_integrity(svc):
             assert c in actual, f"{tbl} missing col: {c}"
 
     assert len(table_names & set(expected)) == 9
-    print(f"[TC-05] ✅ 9 tables, all columns verified")
+    print("[TC-05] ✅ 9 tables, all columns verified")
 
 
 def test_tc06_full_e2e_lifecycle(svc):

@@ -21,35 +21,42 @@ class TestMemoryProvider:
     """MemoryProvider: core A2A Server simulation"""
 
     def setup_method(self):
+        """Initialise a fresh MemoryProvider for each test."""
         self.provider = MemoryProvider("test-mem")
 
     def test_provider_creation(self):
+        """Verify that a MemoryProvider can be created with a custom name."""
         assert self.provider.name == "test-mem"
         assert isinstance(self.provider, A2AProvider)
         assert "local" in self.provider.capabilities
 
     def test_agent_card_registration(self):
+        """Verify registering an agent card and retrieving it."""
         card = {"name": "scout-agent", "skills": ["search", "analyze"]}
         self.provider.register_agent_card(card)
         retrieved = self.provider.get_agent_card("scout-agent")
         assert retrieved["skills"] == ["search", "analyze"]
 
     def test_agent_card_not_found(self):
+        """Verify retrieving a non-existent agent card returns None."""
         assert self.provider.get_agent_card("nonexistent") is None
 
     def test_send_message_creates_task(self):
+        """Verify send_message creates a task in the provider."""
         task = {"id": "task_001", "status": {"state": "submitted"}, "payload": {}}
         result = self.provider.send_message(task)
         assert result.success is True
         assert result.task_state == "submitted"
 
     def test_send_message_missing_id_returns_error(self):
+        """Verify send_message without an id returns an error."""
         result = self.provider.send_message({"status": {}, "payload": {}})
         assert result.success is False
         assert isinstance(result.error, A2AError)
         assert result.error.code == 400
 
     def test_get_task_returns_task(self):
+        """Verify get_task returns a previously sent task."""
         task = {"id": "task_002", "status": {"state": "working"}, "payload": {"query": "test"}}
         self.provider.send_message(task)
         result = self.provider.get_task("task_002")
@@ -58,11 +65,13 @@ class TestMemoryProvider:
         assert result.data["payload"]["query"] == "test"
 
     def test_get_task_not_found(self):
+        """Verify get_task for a non-existent task returns an error with 404."""
         result = self.provider.get_task("nonexistent")
         assert result.success is False
         assert result.error.code == 404
 
     def test_cancel_task(self):
+        """Verify cancel_task changes task state to canceled."""
         task = {"id": "task_003", "status": {"state": "working"}, "payload": {}}
         self.provider.send_message(task)
         result = self.provider.cancel_task("task_003")
@@ -74,17 +83,20 @@ class TestMemoryProvider:
         assert get_result.data["status"]["state"] == "canceled"
 
     def test_cancel_nonexistent_task(self):
+        """Verify cancel_task on a non-existent task returns a 404 error."""
         result = self.provider.cancel_task("ghost")
         assert result.success is False
         assert result.error.code == 404
 
     def test_ping(self):
+        """test_ping."""
         result = self.provider.ping()
         assert result.success is True
         assert result.data["status"] == "ok"
         assert result.data["provider"] == "test-mem"
 
     def test_multiple_conversations_isolated(self):
+        """test_multiple_conversations_isolated."""
         # Two independent conversations should not interfere
         task_a = {"id": "conv_a_001", "status": {"state": "submitted"}, "payload": {}}
         task_b = {"id": "conv_b_001", "status": {"state": "working"}, "payload": {}}
@@ -108,11 +120,13 @@ class TestA2ATaskManager:
         self.mgr = A2ATaskManager()
 
     def test_track_new_task(self):
+        """test_track_new_task."""
         self.mgr.track("task_001", A2ATaskState.PENDING)
         task = self.mgr.get_task("task_001")
         assert task["state"] == A2ATaskState.PENDING
 
     def test_valid_state_transition_chain(self):
+        """test_valid_state_transition_chain."""
         self.mgr.track("task_001", A2ATaskState.PENDING)
         self.mgr.update_state("task_001", A2ATaskState.SUBMITTED)
         self.mgr.update_state("task_001", A2ATaskState.WORKING)
@@ -122,11 +136,14 @@ class TestA2ATaskManager:
         assert final["state"] == A2ATaskState.COMPLETED
 
     def test_invalid_state_transition_raises(self):
+        """test_invalid_state_transition_raises."""
         self.mgr.track("task_001", A2ATaskState.COMPLETED)
         with pytest.raises(A2AError, match="400"):
+            """test_get_task_non_existent."""
             self.mgr.update_state("task_001", A2ATaskState.WORKING)
 
     def test_get_task_non_existent(self):
+        """test_parent_child_relationship."""
         assert self.mgr.get_task("ghost") is None
 
     def test_parent_child_relationship(self):
@@ -140,6 +157,8 @@ class TestA2ATaskManager:
         assert children[1]["task_id"] == "child_2"
 
     def test_nonexistent_parent_children(self):
+        """test_cleanup_removes_stale_tasks."""
+        """test_nonexistent_parent_children."""
         assert self.mgr.get_children("no_such_task") == []
 
     def test_cleanup_removes_stale_tasks(self):
@@ -165,6 +184,7 @@ class TestA2AFacade:
     """A2AFacade: unified entry point for Provider + TaskManager"""
 
     def setup_method(self):
+        """test_get_task_through_facade."""
         provider = MemoryProvider("test-facade")
         self.facade = A2AFacade(provider, A2ATaskManager())
 
@@ -180,6 +200,7 @@ class TestA2AFacade:
         assert result.success is True
 
     def test_cancel_task_through_facade(self):
+        """test_provider_switching."""
         task = {"id": "facade_003", "status": {"state": "submitted"}}
         self.facade.send_task(task)
         result = self.facade.cancel_task("facade_003")
@@ -191,6 +212,7 @@ class TestA2AFacade:
         assert self.facade.provider.name == "switched"
 
     def test_task_state_tracked_through_facade(self):
+        """test_ok_result."""
         task = {"id": "facade_state", "status": {"state": "submitted"}}
         self.facade.send_task(task)
         tracked = self.facade.task_manager.get_task("facade_state")
@@ -201,6 +223,7 @@ class TestA2AResult:
     """A2AResult: operation result encapsulation"""
 
     def test_ok_result(self):
+        """test_bool_conversion."""
         r = A2AResult.ok({"message": "hello"})
         assert r.success is True
         assert r.data["message"] == "hello"

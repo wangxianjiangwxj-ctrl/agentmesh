@@ -52,6 +52,11 @@ class ServerTimeoutConfig:
     NO_TIMEOUT: ClassVar[float] = 0.0
 
     def __post_init__(self):
+        """Validate timeout values after initialization.
+
+        Raises:
+            ValueError: If any timeout value is negative.
+        """
         if self.request_timeout < 0:
             raise ValueError(f"request_timeout must be >= 0, got {self.request_timeout}")
         if self.stream_idle_timeout < 0:
@@ -98,6 +103,11 @@ class RetryConfig:
     retry_on_network_error: bool = True
 
     def __post_init__(self):
+        """Validate retry configuration after initialization.
+
+        Raises:
+            ValueError: If max_retries is negative or backoff/max_backoff is non-positive.
+        """
         if self.max_retries < 0:
             raise ValueError(f"max_retries must be >= 0, got {self.max_retries}")
         if self.backoff_factor <= 0:
@@ -106,12 +116,26 @@ class RetryConfig:
             raise ValueError(f"max_backoff must be > 0, got {self.max_backoff}")
 
     def backoff_delay(self, attempt: int) -> float:
-        """Calculate exponential backoff delay for the given attempt (1-indexed)."""
+        """Calculate exponential backoff delay for the given attempt (1-indexed).
+
+        Args:
+            attempt: The retry attempt number (1-indexed).
+
+        Returns:
+            The delay in seconds, capped at max_backoff.
+        """
         delay = self.backoff_factor * (2 ** (attempt - 1))
         return min(delay, self.max_backoff)
 
     def should_retry_on_status(self, status_code: int) -> bool:
-        """Check if a given HTTP status code is retryable."""
+        """Check if a given HTTP status code is considered retryable.
+
+        Args:
+            status_code: The HTTP status code to check.
+
+        Returns:
+            True if the status code is in the retryable set.
+        """
         return status_code in self.retryable_statuses
 
     def should_retry_on_error(self, error: Exception) -> bool:
@@ -119,6 +143,12 @@ class RetryConfig:
 
         Retries on network-level errors (ConnectionError, TimeoutError, OSError)
         when ``retry_on_network_error`` is True.
+
+        Args:
+            error: The exception to check.
+
+        Returns:
+            True if the error type is retryable.
         """
         if not self.retry_on_network_error:
             return False

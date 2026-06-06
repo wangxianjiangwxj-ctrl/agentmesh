@@ -22,12 +22,12 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "sdk"))
 
 from a2a_provider import (
-    MemoryProvider,
+    A2AError,
     A2AFacade,
+    A2AResult,
     A2ATaskManager,
     A2ATaskState,
-    A2AResult,
-    A2AError,
+    MemoryProvider,
 )
 
 # ------------------------------------------------------------------

@@ -1,9 +1,14 @@
-"""Evidence router — wraps EvidenceChainService for recording and querying evidence chain."""
+"""Evidence router — wraps EvidenceChainService for recording and querying evidence chain.
+
+Provides REST endpoints for recording evidence entries and querying
+the evidence chain for a given task.
+"""
+
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
-from starlette.responses import JSONResponse
 from pydantic import BaseModel
-from typing import Optional
+from starlette.responses import JSONResponse
 
 from ..deps import get_evidence_service
 
@@ -11,6 +16,16 @@ router = APIRouter()
 
 
 class RecordEvidenceBody(BaseModel):
+    """Request body for recording an evidence chain entry.
+
+    Attributes:
+        task_id: Task this evidence belongs to.
+        action: Lifecycle action name.
+        payload: Optional event payload dict.
+        secondary_actor_id: Optional secondary signer agent ID.
+        extra: Optional extra metadata dict.
+    """
+
     task_id: str
     action: str
     payload: Optional[dict] = None
@@ -20,6 +35,18 @@ class RecordEvidenceBody(BaseModel):
 
 @router.post("/evidence/record")
 def record_evidence(body: RecordEvidenceBody, request: Request):
+    """Record a new evidence chain entry.
+
+    The authenticated agent becomes the primary actor for the entry.
+
+    Args:
+        body: Evidence recording payload.
+        request: The incoming HTTP request (provides agent context).
+
+    Returns:
+        JSON with ``evidence_id``, ``task_id``, ``chain_index``,
+        ``action``, ``actor_id``, ``chain_hash``, and ``created_at``.
+    """
     svc = get_evidence_service()
     agent_id = getattr(request.state, "agent_id", "unknown")
     try:
@@ -49,6 +76,14 @@ def record_evidence(body: RecordEvidenceBody, request: Request):
 
 @router.get("/evidence/{task_id}")
 def query_evidence(task_id: str):
+    """Retrieve the full evidence chain for a task.
+
+    Args:
+        task_id: Task identifier.
+
+    Returns:
+        JSON with ``task_id`` and a ``chain`` array of evidence entries.
+    """
     svc = get_evidence_service()
     try:
         chain = svc.get_by_task(task_id)

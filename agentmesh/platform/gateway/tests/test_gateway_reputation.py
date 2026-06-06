@@ -8,15 +8,18 @@ from gateway.deps import reset_db
 
 @pytest.fixture(autouse=True)
 def _reset():
+    """Reset database state before each test."""
     reset_db()
 
 
 @pytest.fixture
 def client():
+    """Create a FastAPI test client for gateway endpoint testing."""
     return TestClient(create_app())
 
 
 def test_submit_review(client):
+    """Test submitting a review for a task and agent."""
     headers = {"X-API-Key": "test-key"}
     resp = client.post(
         "/api/v1/reviews/submit",
@@ -37,6 +40,7 @@ def test_submit_review(client):
 
 
 def test_get_reputation(client):
+    """Test retrieving reputation score for an agent."""
     headers = {"X-API-Key": "test-key"}
     resp = client.get(
         "/api/v1/reputation/agent-someone",

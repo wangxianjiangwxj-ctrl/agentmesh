@@ -23,9 +23,9 @@ import os
 import subprocess
 import sys
 import time
+import unittest
 import urllib.error
 import urllib.request
-import unittest
 
 # ---------------------------------------------------------------------------
 # Import
@@ -34,12 +34,12 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 try:
-    from agentmesh.a2a_server import A2AServerError, ERROR_CODE_MAP, HttpProvider
     from agentmesh.a2a_provider import A2AError, ProviderError
+    from agentmesh.a2a_server import ERROR_CODE_MAP, A2AServerError, HttpProvider
 except ImportError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-    from agentmesh.a2a_server import A2AServerError, ERROR_CODE_MAP, HttpProvider
     from agentmesh.a2a_provider import A2AError, ProviderError
+    from agentmesh.a2a_server import ERROR_CODE_MAP, A2AServerError, HttpProvider
 
 # ---------------------------------------------------------------------------
 # Constants

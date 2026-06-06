@@ -3,20 +3,23 @@
 import pytest
 from fastapi.testclient import TestClient
 from gateway.app import create_app
-from gateway.deps import reset_db, get_escrow_service
+from gateway.deps import reset_db
 
 
 @pytest.fixture(autouse=True)
 def _reset():
+    """Reset database state before each test."""
     reset_db()
 
 
 @pytest.fixture
 def client():
+    """Create a FastAPI test client for gateway endpoint testing."""
     return TestClient(create_app())
 
 
 def test_hold_escrow(client):
+    """Test holding escrow for a task with valid amount and task_id."""
     headers = {"X-API-Key": "test-key"}
     resp = client.post(
         "/api/v1/escrow/hold",

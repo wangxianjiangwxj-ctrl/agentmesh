@@ -19,12 +19,12 @@ Usage:
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
 import threading
 import time
-import json
 import unittest
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -42,22 +42,22 @@ sys.path.insert(0, REPO_ROOT)
 # ---------------------------------------------------------------------------
 
 try:
-    from agentmesh.a2a_server import HttpProvider
     from agentmesh.a2a_provider import A2AError, A2AResult
+    from agentmesh.a2a_server import HttpProvider
 except ImportError:
     sys.path.insert(0, os.path.join(REPO_ROOT, "agentmesh"))
-    from agentmesh.a2a_server import HttpProvider
     from agentmesh.a2a_provider import A2AError, A2AResult
+    from agentmesh.a2a_server import HttpProvider
 
 try:
     from agentmesh.a2a.integration import (
-        IntegrationTestRunner,
-        IntegrationTestMatrix,
-        TestScenario,
-        ScenarioResult,
-        FrameworkType,
-        TestResult,
         DEFAULT_MATRIX,
+        FrameworkType,
+        IntegrationTestMatrix,
+        IntegrationTestRunner,
+        ScenarioResult,
+        TestResult,
+        TestScenario,
     )
     HAS_INTEGRATION = True
 except ImportError:
@@ -65,13 +65,13 @@ except ImportError:
 
 try:
     from agentmesh.a2a.integration.crewai_adapter import (
-        CrewAIAdapter,
-        CardType,
-        CardStatus,
-        CardSendResult,
-        CardReceiveResult,
-        CrewAIAgentConfig,
         A2AToolDef,
+        CardReceiveResult,
+        CardSendResult,
+        CardStatus,
+        CardType,
+        CrewAIAdapter,
+        CrewAIAgentConfig,
     )
     HAS_CREWAI_ADAPTER = True
 except ImportError:
@@ -79,12 +79,12 @@ except ImportError:
 
 try:
     from agentmesh.a2a.integration.autogen_adapter import (
-        AutoGenAdapter,
-        MessageType,
-        MessageSendResult,
-        MessageReceiveResult,
-        AutoGenAgentConfig,
         A2AAgentDef,
+        AutoGenAdapter,
+        AutoGenAgentConfig,
+        MessageReceiveResult,
+        MessageSendResult,
+        MessageType,
     )
     HAS_AUTOGEN_ADAPTER = True
 except ImportError:
@@ -105,8 +105,8 @@ SERVER_SCRIPT = os.path.join(REPO_ROOT, "agentmesh", "a2a_server.py")
 
 def _is_server_running(url: str = SERVER_URL) -> bool:
     """Check if an A2A server is already running at the given URL."""
-    import urllib.request
     import urllib.error
+    import urllib.request
     try:
         req = urllib.request.Request(f"{url}/ping", method="GET")
         with urllib.request.urlopen(req, timeout=3) as resp:

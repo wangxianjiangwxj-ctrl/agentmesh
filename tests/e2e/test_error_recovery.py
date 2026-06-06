@@ -16,8 +16,8 @@ import json
 import os
 import sys
 import time
-import urllib.request
 import urllib.error
+import urllib.request
 
 SERVER_URL = os.environ.get("A2A_SERVER_URL", "http://localhost:8000")
 A2A_ENDPOINT = f"{SERVER_URL}/a2a"

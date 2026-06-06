@@ -1,8 +1,7 @@
-"""
-AgentMesh Platform — Module 3: Evidence Chain (v2)
+"""AgentMesh Platform — Module 3: Evidence Chain (v2).
 
-Schema-aligned: evidence_chain table with chain_index, signature + optional secondary_sig,
-hash-chain linking. Compatible with db_schema.py v2.
+Schema-aligned: evidence_chain table with chain_index, signature + optional
+secondary_sig, hash-chain linking. Compatible with db_schema.py v2.
 """
 from __future__ import annotations
 
@@ -14,15 +13,32 @@ from typing import Optional
 
 from identity import (
     IdentityService,
+    decode_public_key,
+    double_sign,
     sign,
     verify,
-    double_sign,
-    decode_public_key,
 )
 
 
 @dataclass
 class EvidenceEntry:
+    """A single evidence chain entry with cryptographic signature and hash linking.
+
+    Attributes:
+        id: Unique entry identifier (UUID hex).
+        task_id: Task this evidence belongs to.
+        chain_index: Auto-incrementing index within the task's chain.
+        action: Lifecycle action that produced this evidence.
+        actor_id: Agent that performed the action.
+        payload_digest: SHA-256 digest of the canonicalised payload JSON.
+        signature: Primary cryptographic signature from the actor.
+        secondary_sig: Optional counterparty signature.
+        chain_prev_hash: Hash of the previous entry in the chain.
+        chain_hash: SHA-256 of (id + prev_hash + payload_digest).
+        extra: JSON-encoded extra metadata.
+        created_at: Timestamp set by the database.
+    """
+
     id: str
     task_id: str
     chain_index: int
@@ -42,7 +58,15 @@ HEAD_TABLE = "evidence_chain_heads"
 
 
 class EvidenceChainService:
-    """Tamper-evident evidence chain with hash-chain and optional dual signatures."""
+    """Tamper-evident evidence chain with hash-chain and optional dual signatures.
+
+    Each event produces a signed entry linked to the previous one via
+    a SHA-256 hash, making the chain tamper-evident.
+
+    Args:
+        identity_svc: IdentityService for key lookups and signing.
+        db_conn: SQLite database connection with the evidence_chain tables.
+    """
 
     def __init__(self, identity_svc: IdentityService, db_conn):
         self.identity = identity_svc
@@ -69,6 +93,21 @@ class EvidenceChainService:
           4. Get previous chain head (hash + index) for this task
           5. Compute chain_hash = SHA256(id + prev_hash + digest)
           6. Persist to evidence_chain + update chain head
+
+        Args:
+            task_id: Task identifier.
+            action: Lifecycle action name.
+            actor_id: Primary actor agent ID.
+            payload: The event payload dict.
+            secondary_actor_id: Optional secondary actor for double-signing.
+            extra: Optional extra metadata dict.
+
+        Returns:
+            The persisted EvidenceEntry with database-generated timestamp.
+
+        Raises:
+            ValueError: If the actor's or secondary actor's private key
+                is not found.
         """
         entry_id = uuid.uuid4().hex
 
@@ -145,7 +184,15 @@ class EvidenceChainService:
     # ── verification ───────────────────────────────────────────────────
 
     def verify_chain(self, task_id: str) -> list[dict]:
-        """Walk the hash-chain and validate integrity. Returns entries with chain_ok."""
+        """Walk the hash-chain and validate integrity.
+
+        Args:
+            task_id: Task identifier to verify.
+
+        Returns:
+            List of entry dicts, each with an added ``chain_ok``
+            boolean indicating hash integrity.
+        """
         rows = self.conn.execute(
             f"""SELECT * FROM {TABLE}
                WHERE task_id = ?
@@ -165,7 +212,16 @@ class EvidenceChainService:
         return result
 
     def verify_signature(self, actor_id: str, payload: dict, signature: str) -> bool:
-        """Verify a stored signature against an actor's public key."""
+        """Verify a stored signature against an actor's public key.
+
+        Args:
+            actor_id: Agent ID whose public key to use.
+            payload: The dictionary that was signed.
+            signature: Base64-encoded signature to verify.
+
+        Returns:
+            ``True`` if the signature is valid, ``False`` otherwise.
+        """
         agent = self.identity.get_agent(actor_id)
         if agent is None:
             return False
@@ -175,6 +231,14 @@ class EvidenceChainService:
     # ── queries ────────────────────────────────────────────────────────
 
     def get_by_task(self, task_id: str) -> list[dict]:
+        """Retrieve all evidence entries for a task.
+
+        Args:
+            task_id: Task identifier.
+
+        Returns:
+            List of entry dicts ordered by chain index.
+        """
         rows = self.conn.execute(
             f"""SELECT * FROM {TABLE}
                WHERE task_id = ? ORDER BY chain_index ASC""",
@@ -183,6 +247,15 @@ class EvidenceChainService:
         return [dict(r) for r in rows]
 
     def get_by_actor(self, actor_id: str, limit: int = 50) -> list[dict]:
+        """Retrieve evidence entries for a specific actor.
+
+        Args:
+            actor_id: Agent identifier.
+            limit: Maximum number of entries (default 50).
+
+        Returns:
+            List of entry dicts in reverse chain-index order.
+        """
         rows = self.conn.execute(
             f"""SELECT * FROM {TABLE}
                WHERE actor_id = ? ORDER BY chain_index DESC LIMIT ?""",
@@ -193,6 +266,15 @@ class EvidenceChainService:
     # ── internals ──────────────────────────────────────────────────────
 
     def _get_chain_head(self, task_id: str) -> Optional[dict]:
+        """Retrieve the latest chain head for a task.
+
+        Args:
+            task_id: Task to look up.
+
+        Returns:
+            A dict with ``hash`` and ``index`` keys, or ``None`` if the
+            task has no entries.
+        """
         row = self.conn.execute(
             f"SELECT latest_hash as h, latest_index as idx FROM {HEAD_TABLE} WHERE task_id = ?",
             (task_id,),
