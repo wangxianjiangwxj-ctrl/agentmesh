@@ -3,26 +3,33 @@
 Creates the FastAPI application, registers routers and middleware,
 and exposes a convenience factory function.
 """
+
 from fastapi import FastAPI
 
 from agentmesh.platform.health import get_health_status
 
 from .middleware.auth import AuthMiddleware
+from .middleware.security_headers import SecurityHeadersMiddleware
 from .routers import escrow, evidence, identity, reputation, tasks, web_ui
 
 
 def create_app() -> FastAPI:
     """Create and configure the AgentMesh API Gateway application.
 
-    Registers all five route modules under the ``/api/v1`` prefix and
-    attaches the AuthMiddleware. The health endpoint is enriched with
-    DB connection status and component status from
-    :mod:`agentmesh.platform.health`.
+    Registers all route modules and attaches middleware in the
+    following order (outermost first):
+
+    1. SecurityHeaders — security response headers + CSRF cookie
+    2. Auth — API key / identity validation
+
+    The health endpoint is enriched with DB connection status and
+    component status from :mod:`agentmesh.platform.health`.
 
     Returns:
         A fully configured FastAPI application instance.
     """
     app = FastAPI(title="AgentMesh API Gateway", version="0.1.0")
+    app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(AuthMiddleware)
     app.include_router(identity.router, prefix="/api/v1")
     app.include_router(tasks.router, prefix="/api/v1")

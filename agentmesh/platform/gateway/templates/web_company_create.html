@@ -1,0 +1,44 @@
+{% extends "web_base.html" %}
+{% block title %}Create Company — AgentMesh{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-4">Create a New Company</h1>
+
+<form method="POST" action="/web/companies/create" class="needs-validation" novalidate>
+    {{ csrf_input(request) | safe }}
+    <div class="mb-3">
+        <label for="name" class="form-label">Company Name <span class="text-danger">*</span></label>
+        <input type="text"
+               class="form-control {% if errors and errors.name %}is-invalid{% endif %}"
+               id="name" name="name" placeholder="Enter company name"
+               required maxlength="200"
+               value="{{ form_data.name if form_data else '' }}">
+        {% if errors and errors.name %}
+        <div class="invalid-feedback">{{ errors.name }}</div>
+        {% else %}
+        <div class="form-text">Required. Maximum 200 characters.</div>
+        {% endif %}
+    </div>
+
+    <div class="mb-3">
+        <label for="description" class="form-label">Description</label>
+        <textarea class="form-control" id="description" name="description"
+                  rows="3" placeholder="Optional company description"
+                  maxlength="2000">{{ form_data.description if form_data else '' }}</textarea>
+        <div class="form-text">Optional. Maximum 2000 characters.</div>
+    </div>
+
+    <div class="mb-3">
+        <label for="founder_agent_id" class="form-label">Founder Agent ID</label>
+        <input type="text" class="form-control" id="founder_agent_id"
+               name="founder_agent_id" placeholder="Optional — auto-generated if blank"
+               value="{{ form_data.founder_agent_id if form_data else '' }}">
+        <div class="form-text">Optional. If left blank, a random agent ID is used.</div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Create Company</button>
+        <a href="/web/companies" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}

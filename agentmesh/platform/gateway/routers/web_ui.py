@@ -17,16 +17,17 @@ from __future__ import annotations
 import os
 import uuid
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Optional
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from agentmesh.platform.company.equity import EquityService
 from agentmesh.platform.dividend import DividendService
 
-from .deps import get_db, get_identity_service, get_task_market_service
+from ..deps import get_db, get_identity_service, get_task_market_service
+from ..security.csrf import csrf_input, csrf_protected
 
 web_router = APIRouter()
 
@@ -34,6 +35,7 @@ web_router = APIRouter()
 
 _templates_dir = os.path.join(os.path.dirname(__file__), "..", "templates")
 templates = Jinja2Templates(directory=_templates_dir)
+templates.env.globals["csrf_input"] = csrf_input
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────
@@ -146,9 +148,7 @@ async def dashboard(request: Request):
 
     # Active agent count (status column may not exist in all schema versions)
     try:
-        active_agents = db.execute(
-            "SELECT COUNT(*) AS cnt FROM agents WHERE status = 'active'"
-        ).fetchone()
+        active_agents = db.execute("SELECT COUNT(*) AS cnt FROM agents WHERE status = 'active'").fetchone()
         active_agent_count = active_agents["cnt"] if active_agents else 0
     except Exception:
         active_agent_count = agent_count
@@ -179,9 +179,7 @@ def list_agents(request: Request):
         status = "active"
         role = "agent"
         try:
-            row = db.execute(
-                "SELECT status, role FROM agents WHERE id = ?", (a["id"],)
-            ).fetchone()
+            row = db.execute("SELECT status, role FROM agents WHERE id = ?", (a["id"],)).fetchone()
             if row:
                 status = row["status"]
                 role = row["role"]
@@ -330,9 +328,7 @@ def list_companies(request: Request):
 def company_detail(request: Request, company_id: str):
     """Company detail page."""
     db = get_db()
-    company = db.execute(
-        "SELECT * FROM companies WHERE id = ?", (company_id,)
-    ).fetchone()
+    company = db.execute("SELECT * FROM companies WHERE id = ?", (company_id,)).fetchone()
     if not company:
         return HTMLResponse("Company not found", status_code=404)
     company = dict(company)
@@ -381,9 +377,7 @@ def company_detail(request: Request, company_id: str):
 def list_equity(request: Request):
     """All equity holdings page."""
     db = get_db()
-    holdings = db.execute(
-        "SELECT * FROM equity_shares ORDER BY issued_at DESC LIMIT 200"
-    ).fetchall()
+    holdings = db.execute("SELECT * FROM equity_shares ORDER BY issued_at DESC LIMIT 200").fetchall()
     cap = db.execute(
         "SELECT COUNT(DISTINCT agent_id) as agents, COALESCE(SUM(shares),0) as total FROM equity_shares"
     ).fetchone()
@@ -404,15 +398,9 @@ def list_equity(request: Request):
 def list_dividends(request: Request):
     """Dividend records page."""
     db = get_db()
-    funds = db.execute(
-        "SELECT * FROM dividend_funds ORDER BY created_at DESC LIMIT 100"
-    ).fetchall()
-    records = db.execute(
-        "SELECT * FROM dividend_records ORDER BY created_at DESC LIMIT 200"
-    ).fetchall()
-    total_deposited = db.execute(
-        "SELECT COALESCE(SUM(total_amount),0) FROM dividend_funds"
-    ).fetchone()[0]
+    funds = db.execute("SELECT * FROM dividend_funds ORDER BY created_at DESC LIMIT 100").fetchall()
+    records = db.execute("SELECT * FROM dividend_records ORDER BY created_at DESC LIMIT 200").fetchall()
+    total_deposited = db.execute("SELECT COALESCE(SUM(total_amount),0) FROM dividend_funds").fetchone()[0]
     total_distributed = db.execute(
         "SELECT COALESCE(SUM(dividend_amount),0) FROM dividend_records WHERE claimed = 1"
     ).fetchone()[0]
@@ -442,7 +430,7 @@ def company_create_form(request: Request):
 
 
 @web_router.post("/admin/companies/create", include_in_schema=False)
-async def create_company(request: Request):
+async def create_company(request: Request, _csrf: None = Depends(csrf_protected)):
     """Handle company creation form submission."""
     form = await request.form()
     name = form.get("name", "")
@@ -475,9 +463,7 @@ async def create_company(request: Request):
 
     # Issue founder shares via EquityService
     equity_svc = EquityService(db)
-    equity_svc.issue_shares(
-        company_id, founder_id, initial_shares, share_class=initial_class
-    )
+    equity_svc.issue_shares(company_id, founder_id, initial_shares, share_class=initial_class)
 
     db.commit()
 
@@ -536,7 +522,7 @@ def proposal_new_form(request: Request):
 
 
 @web_router.post("/admin/proposals/new", include_in_schema=False)
-async def create_proposal(request: Request):
+async def create_proposal(request: Request, _csrf: None = Depends(csrf_protected)):
     """Handle new proposal form submission."""
     form = await request.form()
     company_id = form.get("company_id", "")
@@ -574,9 +560,7 @@ def vote_form(request: Request, proposal_id: str):
     """Vote form page for a specific proposal."""
     db = get_db()
     _ensure_proposal_schema(db)
-    row = db.execute(
-        "SELECT * FROM proposals WHERE id = ?", (proposal_id,)
-    ).fetchone()
+    row = db.execute("SELECT * FROM proposals WHERE id = ?", (proposal_id,)).fetchone()
     if not row:
         return HTMLResponse("Proposal not found", status_code=404)
     proposal = dict(row)
@@ -592,7 +576,7 @@ def vote_form(request: Request, proposal_id: str):
 
 
 @web_router.post("/admin/vote/{proposal_id}", include_in_schema=False)
-async def submit_vote(request: Request, proposal_id: str):
+async def submit_vote(request: Request, proposal_id: str, _csrf: None = Depends(csrf_protected)):
     """Handle vote submission."""
     form = await request.form()
     vote = form.get("vote", "")
@@ -627,9 +611,7 @@ async def submit_vote(request: Request, proposal_id: str):
     }
     col = col_map.get(vote)
     if col:
-        db.execute(
-            f"UPDATE proposals SET {col} = {col} + 1 WHERE id = ?", (proposal_id,)
-        )
+        db.execute(f"UPDATE proposals SET {col} = {col} + 1 WHERE id = ?", (proposal_id,))
 
     db.commit()
 
@@ -657,7 +639,7 @@ def dividend_publish_form(request: Request):
 
 
 @web_router.post("/admin/dividends/publish", include_in_schema=False)
-async def publish_dividend(request: Request):
+async def publish_dividend(request: Request, _csrf: None = Depends(csrf_protected)):
     """Handle dividend publish form submission."""
     form = await request.form()
     company_id = form.get("company_id", "")
@@ -682,3 +664,215 @@ async def publish_dividend(request: Request):
             pass  # Skip funds that fail (e.g., no shareholders)
 
     return RedirectResponse(url="/admin/dividends", status_code=303)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Phase 36 — Company Management Web UI (Agent-facing, light theme)
+#  Routes under /web prefix, uses CompanyService, focused templates.
+# ═══════════════════════════════════════════════════════════════════════
+
+_web_templates_dir = os.path.join(os.path.dirname(__file__), "..", "templates")
+web_templates = Jinja2Templates(directory=_web_templates_dir)
+web_templates.env.globals["csrf_input"] = csrf_input
+
+
+def _get_company_service() -> Any:
+    """Return a CompanyService backed by the shared DB connection."""
+    from agentmesh.platform.company.service import CompanyService
+
+    return CompanyService()
+
+
+@web_router.get("/web/companies", response_class=HTMLResponse, include_in_schema=False)
+@web_router.get("/web/companies/", response_class=HTMLResponse, include_in_schema=False)
+def web_company_list(request: Request):
+    """Agent-facing company list page."""
+    svc = _get_company_service()
+    companies = svc.list_companies()
+    flash = _consume_flash_v2(request)
+    return web_templates.TemplateResponse(
+        "web_company_list.html",
+        {"request": request, "companies": companies, "flash": flash, "active_nav": "companies"},
+    )
+
+
+@web_router.get("/web/companies/create", response_class=HTMLResponse, include_in_schema=False)
+def web_company_create_form(request: Request):
+    """Agent-facing company creation form page."""
+    return web_templates.TemplateResponse(
+        "web_company_create.html",
+        {"request": request, "errors": {}, "form_data": {}, "flash": None, "active_nav": "create"},
+    )
+
+
+@web_router.post("/web/companies/create", response_class=HTMLResponse, include_in_schema=False)
+async def web_company_create_submit(request: Request, _csrf: None = Depends(csrf_protected)):
+    """Handle company creation form submission."""
+    form = await request.form()
+    name = form.get("name", "")
+    description = form.get("description", "")
+    founder_agent_id = form.get("founder_agent_id", "")
+
+    errors = {}
+    if not name or not name.strip():
+        errors["name"] = "Company name must not be empty"
+
+    if errors:
+        return web_templates.TemplateResponse(
+            "web_company_create.html",
+            {
+                "request": request,
+                "errors": errors,
+                "form_data": {"name": name, "description": description, "founder_agent_id": founder_agent_id},
+                "flash": None,
+                "active_nav": "create",
+            },
+            status_code=422,
+        )
+
+    try:
+        svc = _get_company_service()
+        result = svc.create_company(
+            name=name.strip(),
+            description=description.strip(),
+            founder_id=founder_agent_id.strip() if founder_agent_id.strip() else "agent-auto",
+        )
+        company_id = result["id"]
+    except ValueError as e:
+        errors["name"] = str(e)
+        return web_templates.TemplateResponse(
+            "web_company_create.html",
+            {
+                "request": request,
+                "errors": errors,
+                "form_data": {"name": name, "description": description, "founder_agent_id": founder_agent_id},
+                "flash": None,
+                "active_nav": "create",
+            },
+            status_code=422,
+        )
+
+    resp = RedirectResponse(url=f"/web/companies/{company_id}", status_code=303)
+    _set_flash_cookie(resp, f'Company "{name.strip()}" created successfully!', "success")
+    return resp
+
+
+@web_router.get("/web/companies/{company_id}", response_class=HTMLResponse, include_in_schema=False)
+def web_company_detail(request: Request, company_id: str):
+    """Agent-facing company detail page."""
+    svc = _get_company_service()
+    flash = _consume_flash_v2(request)
+    try:
+        detail = svc.get_company_detail(company_id)
+        company = detail["company"]
+        members = detail["members"]
+        return web_templates.TemplateResponse(
+            "web_company_detail.html",
+            {
+                "request": request,
+                "company": company,
+                "members": members,
+                "flash": flash,
+                "active_nav": "companies",
+                "member_count": len(members),
+            },
+        )
+    except ValueError:
+        return web_templates.TemplateResponse(
+            "web_404.html",
+            {"request": request, "flash": None},
+            status_code=404,
+        )
+
+
+@web_router.post("/web/companies/{company_id}/join", include_in_schema=False)
+async def web_company_join(request: Request, company_id: str, _csrf: None = Depends(csrf_protected)):
+    """Add a member to the company."""
+    form = await request.form()
+    agent_id = form.get("agent_id", "")
+    if not agent_id or not agent_id.strip():
+        resp = RedirectResponse(url=f"/web/companies/{company_id}", status_code=303)
+        _set_flash_cookie(resp, "Agent ID must not be empty.", "error")
+        return resp
+
+    svc = _get_company_service()
+    try:
+        svc.join_company(company_id, agent_id.strip())
+    except ValueError as e:
+        resp = RedirectResponse(url=f"/web/companies/{company_id}", status_code=303)
+        _set_flash_cookie(resp, str(e), "error")
+        return resp
+
+    resp = RedirectResponse(url=f"/web/companies/{company_id}", status_code=303)
+    _set_flash_cookie(resp, f"Agent {agent_id} joined the company.", "success")
+    return resp
+
+
+@web_router.post("/web/companies/{company_id}/leave", include_in_schema=False)
+async def web_company_leave(request: Request, company_id: str, _csrf: None = Depends(csrf_protected)):
+    """Remove a member from the company."""
+    form = await request.form()
+    agent_id = form.get("agent_id", "")
+    if not agent_id or not agent_id.strip():
+        resp = RedirectResponse(url=f"/web/companies/{company_id}", status_code=303)
+        _set_flash_cookie(resp, "Agent ID must not be empty.", "error")
+        return resp
+
+    svc = _get_company_service()
+    try:
+        svc.leave_company(company_id, agent_id.strip())
+    except ValueError as e:
+        resp = RedirectResponse(url=f"/web/companies/{company_id}", status_code=303)
+        _set_flash_cookie(resp, str(e), "error")
+        return resp
+
+    resp = RedirectResponse(url="/web/companies", status_code=303)
+    _set_flash_cookie(resp, f"Agent {agent_id} left the company.", "success")
+    return resp
+
+
+@web_router.post("/web/companies/{company_id}/dissolve", include_in_schema=False)
+async def web_company_dissolve(request: Request, company_id: str, _csrf: None = Depends(csrf_protected)):
+    """Dissolve a company (founder only)."""
+    form = await request.form()
+    agent_id = form.get("agent_id", "")
+    if not agent_id or not agent_id.strip():
+        resp = RedirectResponse(url=f"/web/companies/{company_id}", status_code=303)
+        _set_flash_cookie(resp, "Agent ID must not be empty.", "error")
+        return resp
+
+    svc = _get_company_service()
+    try:
+        svc.dissolve_company(company_id, agent_id.strip())
+    except ValueError as e:
+        resp = RedirectResponse(url=f"/web/companies/{company_id}", status_code=303)
+        _set_flash_cookie(resp, str(e), "error")
+        return resp
+
+    resp = RedirectResponse(url="/web/companies", status_code=303)
+    _set_flash_cookie(resp, "Company dissolved successfully.", "success")
+    return resp
+
+
+# ── Flash message cookie helpers (Phase 36) ──────────────────────────
+
+
+def _set_flash_cookie(response: RedirectResponse, message: str, category: str = "success") -> None:
+    """Attach a flash cookie to a redirect response."""
+    import json
+
+    flash_data = json.dumps({"message": message, "category": category})
+    response.set_cookie(key="flash", value=flash_data, max_age=5, path="/")
+
+
+def _consume_flash_v2(request: Request) -> Optional[dict]:
+    """Read and clear the flash cookie from the request."""
+    import json  # noqa: F811
+
+    flash_raw = request.cookies.get("flash")
+    if not flash_raw:
+        return None
+    try:
+        return json.loads(flash_raw)
+    except (json.JSONDecodeError, TypeError):
+        return None

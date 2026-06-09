@@ -4,3 +4,7 @@ mkdocs_test.yml
 *.pyc
 site/
 tests/performance/stress_results/*.json
+.coverage
+*.egg-info/
+dist/
+build/

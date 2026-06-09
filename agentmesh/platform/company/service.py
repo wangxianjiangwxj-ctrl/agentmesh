@@ -5,6 +5,7 @@ Provides the public API for agent company management:
 - Join / leave companies (founder cannot leave — must dissolve or transfer)
 - List / detail queries
 """
+
 from __future__ import annotations
 
 import uuid
@@ -96,10 +97,7 @@ class CompanyService:
             raise ValueError(f"Company '{company_id}' not found")
 
         if company.founder_id != agent_id:
-            raise ValueError(
-                f"Agent '{agent_id}' is not the founder of company "
-                f"'{company_id}' and cannot dissolve it"
-            )
+            raise ValueError(f"Agent '{agent_id}' is not the founder of company '{company_id}' and cannot dissolve it")
 
         if company.status == CompanyStatus.DISSOLVED:
             raise ValueError(f"Company '{company_id}' is already dissolved")
@@ -128,16 +126,11 @@ class CompanyService:
             raise ValueError(f"Company '{company_id}' not found")
 
         if company.status == CompanyStatus.DISSOLVED:
-            raise ValueError(
-                f"Cannot join company '{company_id}' because it is dissolved"
-            )
+            raise ValueError(f"Cannot join company '{company_id}' because it is dissolved")
 
         existing = self._repo.get_member(company_id, agent_id)
         if existing is not None:
-            raise ValueError(
-                f"Agent '{agent_id}' is already a member of company "
-                f"'{company_id}'"
-            )
+            raise ValueError(f"Agent '{agent_id}' is already a member of company '{company_id}'")
 
         member = CompanyMember(
             company_id=company_id,
@@ -171,15 +164,11 @@ class CompanyService:
 
         member = self._repo.get_member(company_id, agent_id)
         if member is None:
-            raise ValueError(
-                f"Agent '{agent_id}' is not a member of company "
-                f"'{company_id}'"
-            )
+            raise ValueError(f"Agent '{agent_id}' is not a member of company '{company_id}'")
 
         if company.founder_id == agent_id:
             raise ValueError(
-                f"Founder of company '{company_id}' cannot leave. "
-                "Dissolve the company or transfer ownership first."
+                f"Founder of company '{company_id}' cannot leave. Dissolve the company or transfer ownership first."
             )
 
         self._repo.remove_member(company_id, agent_id)

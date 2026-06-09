@@ -3,6 +3,7 @@
 Provides company creation, dissolution, membership management, and
 company queries for the "Agent Company" feature.
 """
+
 from __future__ import annotations
 
 from agentmesh.platform.company.equity import EquityService

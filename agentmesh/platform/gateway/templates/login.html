@@ -24,6 +24,7 @@
     <div class="alert" role="alert">{{ error }}</div>
     {% endif %}
     <form method="POST" action="/admin/login">
+      {{ csrf_input(request) | safe }}
       <div class="mb-3">
         <label class="form-label">API Key</label>
         <input type="password" class="form-control" name="api_key" placeholder="amk_v1_..." required>

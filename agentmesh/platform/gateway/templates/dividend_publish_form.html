@@ -3,6 +3,7 @@
 <div class="card" style="max-width:550px;">
   <h5><i class="bi bi-cash-stack me-2"></i>Publish Dividend</h5>
   <form method="POST" action="/admin/dividends/publish">
+    {{ csrf_input(request) | safe }}
     <div class="mb-3">
       <label for="company_id" class="form-label text-muted">Company</label>
       <select class="form-select bg-dark text-light border-secondary" id="company_id" name="company_id" required>

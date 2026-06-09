@@ -4,6 +4,7 @@ Provides an in-memory data layer for Company and CompanyMember entities.
 Designed for MVP / test usage; can be swapped for a SQL-backed
 implementation later by implementing the same interface.
 """
+
 from __future__ import annotations
 
 from typing import Optional
@@ -123,11 +124,7 @@ class CompanyRepository:
         Returns:
             A list of deep-copied CompanyMember objects.
         """
-        return [
-            m.model_copy(deep=True)
-            for key, m in self._members.items()
-            if key[0] == company_id
-        ]
+        return [m.model_copy(deep=True) for key, m in self._members.items() if key[0] == company_id]
 
     def get_companies_for_agent(self, agent_id: str) -> list[Company]:
         """Return all companies an agent is a member of.
@@ -138,14 +135,8 @@ class CompanyRepository:
         Returns:
             A list of deep-copied Company objects.
         """
-        company_ids = [
-            key[0] for key in self._members if key[1] == agent_id
-        ]
-        return [
-            self._companies[cid].model_copy(deep=True)
-            for cid in company_ids
-            if cid in self._companies
-        ]
+        company_ids = [key[0] for key in self._members if key[1] == agent_id]
+        return [self._companies[cid].model_copy(deep=True) for cid in company_ids if cid in self._companies]
 
     def get_member(self, company_id: str, agent_id: str) -> Optional[CompanyMember]:
         """Return a specific membership record, or ``None``.

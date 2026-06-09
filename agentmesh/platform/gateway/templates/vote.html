@@ -10,6 +10,7 @@
     {{ proposal.description }}
   </div>
   <form method="POST" action="/admin/vote/{{ proposal.id }}">
+    {{ csrf_input(request) | safe }}
     <input type="hidden" name="proposal_id" value="{{ proposal.id }}">
     <div class="mb-3">
       <label for="voter_id" class="form-label text-muted">Voter ID</label>

@@ -1,0 +1,51 @@
+{% extends "web_base.html" %}
+{% block title %}Companies — AgentMesh{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Companies</h1>
+    <a href="/web/companies/create" class="btn btn-primary">+ Create Company</a>
+</div>
+
+{% if companies %}
+<div class="table-responsive">
+    <table class="table table-striped table-hover align-middle">
+        <thead class="table-dark">
+            <tr>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Founder</th>
+                <th>Created</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in companies %}
+            <tr>
+                <td>
+                    <a href="/web/companies/{{ c.id }}" class="text-decoration-none fw-medium">
+                        {{ c.name }}
+                    </a>
+                </td>
+                <td>
+                    {% if c.status == 'active' %}
+                    <span class="badge bg-success">active</span>
+                    {% elif c.status == 'dissolved' %}
+                    <span class="badge bg-secondary">dissolved</span>
+                    {% else %}
+                    <span class="badge bg-info">{{ c.status }}</span>
+                    {% endif %}
+                </td>
+                <td><code>{{ c.founder_id[:16] }}...</code></td>
+                <td>{{ c.created_at[:10] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="text-center py-5">
+    <p class="text-muted fs-5 mb-3">No companies registered yet.</p>
+    <a href="/web/companies/create" class="btn btn-primary btn-lg">Create the first company</a>
+</div>
+{% endif %}
+{% endblock %}

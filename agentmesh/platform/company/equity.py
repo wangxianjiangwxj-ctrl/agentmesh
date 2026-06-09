@@ -4,6 +4,7 @@ AgentMesh Platform — Phase 34B: Equity Management
 Manages company equity/shares. Builds on Company Registry (Phase 34A).
 Supports: share issuance, transfer, cap table queries.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -86,9 +87,7 @@ class EquityService:
 
         # Founder class only for the actual founder
         if share_class == "founder":
-            company = self.conn.execute(
-                "SELECT founder_id FROM companies WHERE id = ?", (company_id,)
-            ).fetchone()
+            company = self.conn.execute("SELECT founder_id FROM companies WHERE id = ?", (company_id,)).fetchone()
             if not company or company["founder_id"] != agent_id:
                 raise EquityError("Only the company founder can hold founder shares")
 
@@ -208,9 +207,7 @@ class EquityService:
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def initialize_founder_equity(
-        self, company_id: str, founder_id: str, initial_shares: int = 1000
-    ) -> dict:
+    def initialize_founder_equity(self, company_id: str, founder_id: str, initial_shares: int = 1000) -> dict:
         """Issue initial founder shares when a company is created."""
         # Remove any existing equity for this company
         self.conn.execute("DELETE FROM equity_shares WHERE company_id = ?", (company_id,))

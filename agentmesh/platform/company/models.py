@@ -3,6 +3,7 @@
 Pydantic models for Company and CompanyMember used by the AgentMesh
 company-registry module (Phase 34, Module A).
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone

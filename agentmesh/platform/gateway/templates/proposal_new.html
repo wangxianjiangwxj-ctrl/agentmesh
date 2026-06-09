@@ -3,6 +3,7 @@
 <div class="card" style="max-width:650px;">
   <h5><i class="bi bi-file-earmark-text me-2"></i>New Proposal</h5>
   <form method="POST" action="/admin/proposals/new">
+    {{ csrf_input(request) | safe }}
     <div class="mb-3">
       <label for="company_id" class="form-label text-muted">Company ID</label>
       <input type="text" class="form-control bg-dark text-light border-secondary" id="company_id" name="company_id" placeholder="Company UUID (optional)">
