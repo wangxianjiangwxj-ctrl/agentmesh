@@ -7,8 +7,6 @@ Supports: share issuance, transfer, cap table queries.
 from __future__ import annotations
 
 import uuid
-import json
-from typing import Optional
 from sqlite3 import Connection
 
 

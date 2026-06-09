@@ -5,6 +5,7 @@ company queries for the "Agent Company" feature.
 """
 from __future__ import annotations
 
+from agentmesh.platform.company.equity import EquityService
 from agentmesh.platform.company.models import (
     Company,
     CompanyDetail,
@@ -13,7 +14,6 @@ from agentmesh.platform.company.models import (
     CompanyStatus,
 )
 from agentmesh.platform.company.repository import CompanyRepository
-from agentmesh.platform.company.equity import EquityService
 from agentmesh.platform.company.service import CompanyService
 
 __all__ = [

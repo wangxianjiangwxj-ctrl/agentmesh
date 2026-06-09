@@ -25,7 +25,6 @@ from fastapi.templating import Jinja2Templates
 
 from agentmesh.platform.company.equity import EquityService
 from agentmesh.platform.dividend import DividendService
-from agentmesh.platform.identity import IdentityService
 
 from .deps import get_db, get_identity_service, get_task_market_service
 

@@ -5,6 +5,8 @@ and exposes a convenience factory function.
 """
 from fastapi import FastAPI
 
+from agentmesh.platform.health import get_health_status
+
 from .middleware.auth import AuthMiddleware
 from .routers import escrow, evidence, identity, reputation, tasks, web_ui
 
@@ -13,7 +15,9 @@ def create_app() -> FastAPI:
     """Create and configure the AgentMesh API Gateway application.
 
     Registers all five route modules under the ``/api/v1`` prefix and
-    attaches the AuthMiddleware.
+    attaches the AuthMiddleware. The health endpoint is enriched with
+    DB connection status and component status from
+    :mod:`agentmesh.platform.health`.
 
     Returns:
         A fully configured FastAPI application instance.
@@ -31,9 +35,13 @@ def create_app() -> FastAPI:
     def health():
         """Health check endpoint.
 
+        Returns a detailed health status including database connectivity,
+        component status, and overall platform health.
+
         Returns:
-            A dict with ``status`` and ``version`` fields.
+            A dict with ``status``, ``version``, ``components``, and
+            ``timestamp`` fields.
         """
-        return {"status": "ok", "version": "0.1.0"}
+        return get_health_status()
 
     return app
