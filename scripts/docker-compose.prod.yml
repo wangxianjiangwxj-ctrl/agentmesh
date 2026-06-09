@@ -1,0 +1,118 @@
+version: "3.9"
+
+# ======================================================================
+# AgentMesh Platform — Production Docker Compose
+# ======================================================================
+# Services: app (FastAPI/uvicorn) + db-init (SQLite schema setup)
+#
+# Usage:
+#   docker compose -f scripts/docker-compose.prod.yml up -d
+#   docker compose -f scripts/docker-compose.prod.yml logs -f
+#   docker compose -f scripts/docker-compose.prod.yml down
+# ======================================================================
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  app:
+    image: agentmesh-platform:latest
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: agentmesh-app
+    restart: always
+
+    ports:
+      - "${AGENTMESH_PORT:-8000}:8000"
+
+    environment:
+      - AGENTMESH_DB_DIR=/var/lib/agentmesh/data
+      - AGENTMESH_LOG_LEVEL=${AGENTMESH_LOG_LEVEL:-info}
+      - AGENTMESH_HOST=${AGENTMESH_HOST:-0.0.0.0}
+      - AGENTMESH_PORT=${AGENTMESH_PORT:-8000}
+      - AGENTMESH_SECRET_KEY=${AGENTMESH_SECRET_KEY:?AGENTMESH_SECRET_KEY is required}
+      - AGENTMESH_WORKERS=${AGENTMESH_WORKERS:-4}
+      - AGENTMESH_LOG_DIR=/var/lib/agentmesh/logs
+
+    volumes:
+      - agentmesh_data:/var/lib/agentmesh
+
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: "512M"
+        reservations:
+          cpus: "0.5"
+          memory: "128M"
+
+    logging: *default-logging
+
+    networks:
+      - agentmesh_net
+
+  db-init:
+    image: agentmesh-platform:latest
+    container_name: agentmesh-db-init
+    restart: "no"
+
+    environment:
+      - AGENTMESH_DB_DIR=/var/lib/agentmesh/data
+      - AGENTMESH_LOG_DIR=/var/lib/agentmesh/logs
+      - AGENTMESH_LOG_LEVEL=${AGENTMESH_LOG_LEVEL:-info}
+
+    volumes:
+      - agentmesh_data:/var/lib/agentmesh
+
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        mkdir -p /var/lib/agentmesh/data /var/lib/agentmesh/logs /var/lib/agentmesh/backups
+        python -c '
+        import sqlite3, os, sys
+        from pathlib import Path
+        db_dir = Path(os.environ.get("AGENTMESH_DB_DIR", "/var/lib/agentmesh/data"))
+        db_dir.mkdir(parents=True, exist_ok=True)
+        db_path = db_dir / "agentmesh_platform.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.execute("PRAGMA journal_mode=WAL;")
+        sys.path.insert(0, "/app")
+        from db_schema import SCHEMA_SQL
+        conn.executescript(SCHEMA_SQL)
+        conn.commit()
+        conn.close()
+        print(f"Database initialized at {db_path}")
+        '
+
+    logging: *default-logging
+
+    networks:
+      - agentmesh_net
+
+volumes:
+  agentmesh_data:
+    driver: local
+
+networks:
+  agentmesh_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.88.0.0/16
+          gateway: 10.88.0.1

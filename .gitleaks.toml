@@ -1,0 +1,107 @@
+# AgentMesh Gitleaks Configuration
+# ================================
+# Gitleaks scans git repositories for secrets, API keys, tokens, passwords.
+# This config fine-tunes rules for the AgentMesh project.
+#
+# Reference: https://github.com/gitleaks/gitleaks
+
+title = "AgentMesh Secret Scan Configuration"
+
+# ── Path exclusions ───────────────────────────────────────────────────────
+
+[allowlist]
+description = "Paths and patterns to exclude (test keys, mock tokens, docs)"
+paths = [
+    # Test fixtures with dummy credentials
+    "(?i).*test_.*\\.py$",
+    # Generated / 3rd-party files
+    "node_modules/",
+    "vendor/",
+    ".git/",
+    "site/",
+    # Doc scripts and examples that may contain example keys
+    "docs/",
+    "examples/",
+    # Benchmark data
+    ".benchmarks/",
+    # Cache
+    "__pycache__/",
+    ".pytest_cache/",
+    ".ruff_cache/",
+    ".coverage",
+]
+regexes = [
+    # Mock/example tokens used in tests — these are not real secrets
+    (?i)test[-_]?key,
+    (?i)mocked[-_]?token,
+    (?i)example[-_]?secret,
+    (?i)fake[-_]?api[-_]?key,
+    # Python unittest / pytest method names containing "api_key" are test params
+    "def test.*api_key",
+    "api_key.*=.*test",
+    # Placeholder env values (e.g. YOUR_OPENAI_KEY)
+    "YOUR_",
+    "CHANGEME",
+    "replace_me",
+    # Allowlist common safe patterns
+    "amk_v1_test",
+    "sk_test_",
+    "pk_test_",
+]
+
+# ── Custom rules ──────────────────────────────────────────────────────────
+
+[[rules]]
+id = "agentmesh-api-key"
+description = "AgentMesh API key (amk_v1_ prefix)"
+regex = '''amk_v1_[a-zA-Z0-9]{32,}'''
+tags = ["agentmesh", "api-key", "secret"]
+
+[[rules]]
+id = "openai-api-key"
+description = "OpenAI API Key"
+regex = '''sk-[a-zA-Z0-9]{20,}'''
+tags = ["openai", "api-key"]
+
+[[rules]]
+id = "generic-private-key"
+description = "Generic SSH / PEM private key"
+regex = '''-----BEGIN (RSA |EC |DSA |ED25519 )?PRIVATE KEY-----'''
+tags = ["ssh", "private-key"]
+
+[[rules]]
+id = "github-token"
+description = "GitHub Personal Access Token"
+regex = '''ghp_[a-zA-Z0-9]{36,}'''
+tags = ["github", "token"]
+
+[[rules]]
+id = "github-app-token"
+description = "GitHub App Installation Token"
+regex = '''ghs_[a-zA-Z0-9]{36,}'''
+tags = ["github", "app-token"]
+
+[[rules]]
+id = "jwt-token"
+description = "JSON Web Token (JWT)"
+regex = '''eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}'''
+tags = ["jwt", "token"]
+
+[[rules]]
+id = "slack-token"
+description = "Slack Bot / App Token"
+regex = '''xox[bapr]-[a-zA-Z0-9-]{10,}'''
+tags = ["slack", "token"]
+
+[[rules]]
+id = "aws-access-key"
+description = "AWS Access Key ID"
+regex = '''AKIA[0-9A-Z]{16}'''
+tags = ["aws", "access-key"]
+
+[[rules]]
+id = "generic-api-key"
+description = "Generic high-entropy API key / secret (alphanumeric 32+ chars)"
+regex = '''[aA][pP][iI]_?[kK][eE][yY].{0,20}['\"][a-zA-Z0-9_\-]{32,}['\"]'''
+keywords = ["api_key", "apikey", "api-key", "secret", "token"]
+tags = ["api-key", "generic"]

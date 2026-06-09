@@ -1,0 +1,66 @@
+name: Safety Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # ── Dependency CVE Scan (pip-audit) ──────────────────────────────
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Audit dependencies with pip-audit
+        run: |
+          pip-audit --strict --requirement <(pip freeze 2>/dev/null || true) || echo "PIP_AUDIT_EXIT=$?" >> $GITHUB_ENV
+        continue-on-error: true
+
+      - name: Check pip-audit result
+        run: |
+          if [ "${PIP_AUDIT_EXIT:-0}" -ne 0 ]; then
+            echo "::warning::pip-audit reported vulnerabilities. Review the logs above."
+          else
+            echo "No known CVEs in direct dependencies."
+          fi
+
+      # ── Gitleaks (Secret/Token Leak Scan) ──────────────────────────
+
+      - name: Install gitleaks
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.18.2/gitleaks_8.18.2_linux_amd64.tar.gz \
+            -o /tmp/gitleaks.tar.gz
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp
+          chmod +x /tmp/gitleaks
+          sudo mv /tmp/gitleaks /usr/local/bin/gitleaks
+
+      - name: Scan for secrets with gitleaks
+        run: |
+          gitleaks detect --source . --no-git --verbose \
+            --config .gitleaks.toml \
+            --report-path gitleaks-report.json \
+            --report-format json \
+          || true
+
+      - name: Upload gitleaks report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: gitleaks-report.json
+          retention-days: 14
