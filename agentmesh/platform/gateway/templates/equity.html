@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-md-4"><div class="metric"><div class="val">{{ cap_table|length }}</div><div class="lbl">Total Holdings</div></div></div>
+  <div class="col-md-4"><div class="metric"><div class="val">{{ total_agents }}</div><div class="lbl">Agents with Shares</div></div></div>
+  <div class="col-md-4"><div class="metric"><div class="val">{{ total_shares_all }}</div><div class="lbl">Total Shares</div></div></div>
+</div>
+<div class="card">
+  <h5>All Equity Holdings</h5>
+  <table>
+    <thead><tr><th>Company</th><th>Agent</th><th>Shares</th><th>Class</th><th>Issued</th></tr></thead>
+    <tbody>
+      {% for h in holdings %}
+      <tr>
+        <td><code>{{ h.company_id[:12] }}...</code></td>
+        <td><code>{{ h.agent_id[:12] }}...</code></td>
+        <td><strong>{{ h.shares }}</strong></td>
+        <td>{{ h.share_class }}</td>
+        <td>{{ h.issued_at }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" style="text-align:center;color:var(--muted);">No equity holdings.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

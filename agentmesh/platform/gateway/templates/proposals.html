@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-md-3"><div class="metric"><div class="val">{{ total }}</div><div class="lbl">Total Proposals</div></div></div>
+  <div class="col-md-3"><div class="metric"><div class="val">{{ pending }}</div><div class="lbl">Pending Vote</div></div></div>
+  <div class="col-md-3"><div class="metric"><div class="val">{{ passed }}</div><div class="lbl">Passed</div></div></div>
+  <div class="col-md-3"><div class="metric"><div class="val">{{ rejected }}</div><div class="lbl">Rejected</div></div></div>
+</div>
+
+<div class="text-end mb-3">
+  <a href="/admin/proposals/new" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg me-1"></i>New Proposal</a>
+</div>
+
+<div class="card">
+  <table>
+    <thead><tr><th>ID</th><th>Title</th><th>Company</th><th>Creator</th><th>Status</th><th>For/Against</th><th>Created</th><th></th></tr></thead>
+    <tbody>
+      {% for p in proposals %}
+      <tr>
+        <td><code>{{ p.id[:8] }}...</code></td>
+        <td><strong>{{ p.title }}</strong></td>
+        <td><code>{{ p.company_id[:12] }}...</code></td>
+        <td><code>{{ p.proposer_id[:12] }}...</code></td>
+        <td>
+          {% if p.status == 'active' %}
+            <span class="badge-status badge-pending">Pending</span>
+          {% elif p.status == 'passed' %}
+            <span class="badge-status badge-active">Passed</span>
+          {% elif p.status == 'rejected' %}
+            <span class="badge-status badge-suspended">Rejected</span>
+          {% else %}
+            <span class="badge-status badge-pending">{{ p.status }}</span>
+          {% endif %}
+        </td>
+        <td>{{ p.votes_for }} / {{ p.votes_against }}</td>
+        <td>{{ p.created_at }}</td>
+        <td>
+          {% if p.status == 'active' %}
+          <a href="/admin/vote/{{ p.id }}" class="btn btn-sm btn-outline-primary">Vote</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" style="text-align:center;color:var(--muted);">No proposals yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

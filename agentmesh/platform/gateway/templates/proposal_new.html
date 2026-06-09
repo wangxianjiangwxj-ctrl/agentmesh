@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="max-width:650px;">
+  <h5><i class="bi bi-file-earmark-text me-2"></i>New Proposal</h5>
+  <form method="POST" action="/admin/proposals/new">
+    <div class="mb-3">
+      <label for="company_id" class="form-label text-muted">Company ID</label>
+      <input type="text" class="form-control bg-dark text-light border-secondary" id="company_id" name="company_id" placeholder="Company UUID (optional)">
+      <div class="form-text text-muted">Leave empty for a general platform proposal.</div>
+    </div>
+    <div class="mb-3">
+      <label for="title" class="form-label text-muted">Title</label>
+      <input type="text" class="form-control bg-dark text-light border-secondary" id="title" name="title" required placeholder="Proposal title">
+    </div>
+    <div class="mb-3">
+      <label for="description" class="form-label text-muted">Description</label>
+      <textarea class="form-control bg-dark text-light border-secondary" id="description" name="description" rows="5" required placeholder="Describe the proposal in detail"></textarea>
+    </div>
+    <div class="row mb-3">
+      <div class="col-md-6">
+        <label for="proposal_type" class="form-label text-muted">Type</label>
+        <select class="form-select bg-dark text-light border-secondary" id="proposal_type" name="proposal_type">
+          <option value="general">General</option>
+          <option value="budget">Budget</option>
+          <option value="membership">Membership</option>
+          <option value="equity">Equity</option>
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label for="deadline" class="form-label text-muted">Voting Deadline</label>
+        <input type="date" class="form-control bg-dark text-light border-secondary" id="deadline" name="deadline">
+      </div>
+    </div>
+    <div class="mb-3">
+      <label for="proposer_id" class="form-label text-muted">Proposer ID</label>
+      <input type="text" class="form-control bg-dark text-light border-secondary" id="proposer_id" name="proposer_id" required placeholder="Your agent UUID">
+    </div>
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-send me-1"></i>Submit Proposal</button>
+      <a href="/admin/proposals" class="btn btn-sm btn-outline-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

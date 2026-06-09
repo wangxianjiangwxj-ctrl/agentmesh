@@ -1,11 +1,11 @@
 """AgentMesh Platform — Module 4: Escrow / Point Settlement (v2 schema).
 
 Core operations:
-  - deposit:   add points to an agent's balance
+  - deposit:   add points to an agent's account
   - hold:      lock points when a task is published (no real money)
   - release:   release held points to executor (on double-sign verify)
   - refund:    return held points to publisher (on cancel/reject)
-  - auto_release: T+7 dispute window expiry → auto release to executor
+  - auto_release: T+7 dispute window expiry -> auto release to executor
   - balance:   query available + frozen balance
 """
 from __future__ import annotations
@@ -183,6 +183,33 @@ class EscrowService:
         publisher_return = escrow_amount - executor_reward
         self._validate_hold(publisher_id, escrow_amount)
 
+        self._execute_release(
+            publisher_id, executor_id, escrow_amount,
+            publisher_return, executor_reward, task_id, chain_hash,
+        )
+        return {"executor_reward": executor_reward, "publisher_return": publisher_return}
+
+    def _execute_release(
+        self,
+        publisher_id: str,
+        executor_id: str,
+        escrow_amount: int,
+        publisher_return: int,
+        executor_reward: int,
+        task_id: str,
+        chain_hash: Optional[str],
+    ) -> None:
+        """Execute the database updates for a release operation.
+
+        Args:
+            publisher_id: Publisher agent ID.
+            executor_id: Executor agent ID.
+            escrow_amount: Total escrowed amount.
+            publisher_return: Points to return to publisher.
+            executor_reward: Points to pay to executor.
+            task_id: Task identifier.
+            chain_hash: Optional evidence chain hash.
+        """
         with self.conn:
             self.conn.execute(
                 """UPDATE accounts
@@ -207,7 +234,6 @@ class EscrowService:
                    VALUES (?, ?, ?, ?, ?, 'release', 'confirmed', ?, datetime('now'))""",
                 (tx_id, task_id, publisher_id, executor_id, executor_reward, chain_hash),
             )
-        return {"executor_reward": executor_reward, "publisher_return": publisher_return}
 
     # ── refund ──────────────────────────────────────────────────────────
 
@@ -265,62 +291,11 @@ class EscrowService:
             A dict with ``executor_reward``, ``publisher_return``, and
             ``type`` fields, or ``None`` if no eligible hold exists.
         """
-        hold_tx = self.conn.execute(
-            """SELECT * FROM transactions
-               WHERE task_id = ? AND action = 'hold' AND status = 'pending'
-               ORDER BY created_at DESC LIMIT 1""",
-            (task_id,),
-        ).fetchone()
-        if hold_tx is None:
-            return None
-        hold_tx_dict = dict(hold_tx)
-        deadline = hold_tx_dict.get("dispute_deadline")
-        if deadline is None:
-            return None
-        deadline_dt = datetime.fromisoformat(deadline)
-        if datetime.now() < deadline_dt:
+        hold = self._find_eligible_hold(task_id)
+        if hold is None:
             return None
 
-        with self.conn:
-            from_agent = hold_tx["from_agent"]
-            escrow_amount = hold_tx["amount"]
-            task = self.conn.execute(
-                "SELECT executor_id FROM tasks WHERE id = ?",
-                (task_id,),
-            ).fetchone()
-            if task is None or task["executor_id"] is None:
-                return self.refund(task_id, from_agent, escrow_amount, reason="auto-refund-no-executor")
-
-            executor_id = task["executor_id"]
-            # Default 50/50 split; schema does not store per-task shares
-            executor_reward = escrow_amount // 2
-            publisher_return = escrow_amount - executor_reward
-
-            self.conn.execute(
-                """UPDATE accounts
-                   SET frozen = frozen - ?, balance = balance + ?, updated_at = datetime('now')
-                   WHERE agent_id = ?""",
-                (escrow_amount, publisher_return, from_agent),
-            )
-            self.conn.execute(
-                """INSERT INTO accounts (agent_id, balance, frozen, updated_at)
-                   VALUES (?, ?, 0, datetime('now'))
-                   ON CONFLICT(agent_id) DO UPDATE SET
-                       balance = balance + ?, updated_at = datetime('now')""",
-                (executor_id, executor_reward, executor_reward),
-            )
-            tx_id = uuid.uuid4().hex
-            self.conn.execute(
-                """INSERT INTO transactions
-                   (id, task_id, from_agent, to_agent, amount, action, status, created_at)
-                   VALUES (?, ?, ?, ?, ?, 'release', 'confirmed', datetime('now'))""",
-                (tx_id, task_id, from_agent, executor_id, executor_reward),
-            )
-            self.conn.execute(
-                "UPDATE transactions SET status = 'resolved' WHERE id = ?",
-                (hold_tx["id"],),
-            )
-        return {"executor_reward": executor_reward, "publisher_return": publisher_return, "type": "auto_release"}
+        return self._resolve_hold(hold)
 
     # ── queries ─────────────────────────────────────────────────────────
 
@@ -393,3 +368,134 @@ class EscrowService:
             raise EscrowError(
                 f"Agent frozen balance mismatch: have {account['frozen']}, need {amount}"
             )
+
+    # ── extracted helpers for auto_release() ────────────────────────────
+
+    def _find_eligible_hold(self, task_id: str) -> Optional[dict]:
+        """Find a pending hold transaction whose dispute deadline has passed.
+
+        Args:
+            task_id: Task to look up.
+
+        Returns:
+            A hold transaction dict, or ``None`` if no eligible hold exists.
+        """
+        hold_tx = self.conn.execute(
+            """SELECT * FROM transactions
+               WHERE task_id = ? AND action = 'hold' AND status = 'pending'
+               ORDER BY created_at DESC LIMIT 1""",
+            (task_id,),
+        ).fetchone()
+        if hold_tx is None:
+            return None
+        hold = dict(hold_tx)
+        deadline = hold.get("dispute_deadline")
+        if deadline is None:
+            return None
+        if datetime.now() < datetime.fromisoformat(deadline):
+            return None
+        return hold
+
+    def _resolve_hold(self, hold: dict) -> dict:
+        """Resolve an eligible hold by refunding or splitting with executor.
+
+        Args:
+            hold: The hold transaction dict.
+
+        Returns:
+            A dict with ``executor_reward``, ``publisher_return``, and
+            ``type`` fields.
+        """
+        task_id = hold["task_id"]
+        from_agent = hold["from_agent"]
+        escrow_amount = hold["amount"]
+
+        task = self.conn.execute(
+            "SELECT executor_id FROM tasks WHERE id = ?",
+            (task_id,),
+        ).fetchone()
+
+        if task is None or task["executor_id"] is None:
+            return self._refund_hold(hold, from_agent, escrow_amount)
+
+        executor_id = task["executor_id"]
+        return self._split_hold(hold, from_agent, executor_id, escrow_amount)
+
+    def _refund_hold(self, hold: dict, from_agent: str, escrow_amount: int) -> dict:
+        """Refund a hold when no executor is assigned.
+
+        Args:
+            hold: The original hold transaction dict.
+            from_agent: Publisher agent ID.
+            escrow_amount: Amount to refund.
+
+        Returns:
+            A dict with type, executor_reward, and publisher_return.
+        """
+        # Refund via existing method outside its own transaction context
+        # We need a single transaction for atomicity
+        with self.conn:
+            self.conn.execute(
+                """UPDATE accounts
+                   SET frozen = frozen - ?,
+                       updated_at = datetime('now')
+                   WHERE agent_id = ?""",
+                (escrow_amount, from_agent),
+            )
+            tx_id = uuid.uuid4().hex
+            self.conn.execute(
+                """INSERT INTO transactions
+                   (id, task_id, from_agent, to_agent, amount, action, status, extra, created_at)
+                   VALUES (?, ?, ?, ?, ?, 'refund', 'confirmed', ?, datetime('now'))""",
+                (tx_id, hold["task_id"], from_agent, from_agent, escrow_amount,
+                 json.dumps({"reason": "auto-refund-no-executor"})),
+            )
+            self.conn.execute(
+                "UPDATE transactions SET status = 'resolved' WHERE id = ?",
+                (hold["id"],),
+            )
+        return {"executor_reward": 0, "publisher_return": escrow_amount, "type": "auto_refund"}
+
+    def _split_hold(
+        self, hold: dict, from_agent: str, executor_id: str, escrow_amount: int,
+    ) -> dict:
+        """Split the hold 50/50 between publisher and executor.
+
+        Args:
+            hold: The original hold transaction dict.
+            from_agent: Publisher agent ID.
+            executor_id: Executor agent ID.
+            escrow_amount: Amount to split.
+
+        Returns:
+            A dict with executor_reward, publisher_return, and type.
+        """
+        executor_reward = escrow_amount // 2
+        publisher_return = escrow_amount - executor_reward
+
+        with self.conn:
+            self.conn.execute(
+                """UPDATE accounts
+                   SET frozen = frozen - ?, balance = balance + ?, updated_at = datetime('now')
+                   WHERE agent_id = ?""",
+                (escrow_amount, publisher_return, from_agent),
+            )
+            self.conn.execute(
+                """INSERT INTO accounts (agent_id, balance, frozen, updated_at)
+                   VALUES (?, ?, 0, datetime('now'))
+                   ON CONFLICT(agent_id) DO UPDATE SET
+                       balance = balance + ?, updated_at = datetime('now')""",
+                (executor_id, executor_reward, executor_reward),
+            )
+            tx_id = uuid.uuid4().hex
+            self.conn.execute(
+                """INSERT INTO transactions
+                   (id, task_id, from_agent, to_agent, amount, action, status, created_at)
+                   VALUES (?, ?, ?, ?, ?, 'release', 'confirmed', datetime('now'))""",
+                (tx_id, hold["task_id"], from_agent, executor_id, executor_reward),
+            )
+            self.conn.execute(
+                "UPDATE transactions SET status = 'resolved' WHERE id = ?",
+                (hold["id"],),
+            )
+        return {"executor_reward": executor_reward, "publisher_return": publisher_return, "type": "auto_release"}

@@ -6,7 +6,7 @@ and exposes a convenience factory function.
 from fastapi import FastAPI
 
 from .middleware.auth import AuthMiddleware
-from .routers import escrow, evidence, identity, reputation, tasks
+from .routers import escrow, evidence, identity, reputation, tasks, web_ui
 
 
 def create_app() -> FastAPI:
@@ -25,6 +25,7 @@ def create_app() -> FastAPI:
     app.include_router(escrow.router, prefix="/api/v1")
     app.include_router(evidence.router, prefix="/api/v1")
     app.include_router(reputation.router, prefix="/api/v1")
+    app.include_router(web_ui.web_router)
 
     @app.get("/api/v1/health")
     def health():

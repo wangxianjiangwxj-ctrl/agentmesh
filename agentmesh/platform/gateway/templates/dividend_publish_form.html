@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="max-width:550px;">
+  <h5><i class="bi bi-cash-stack me-2"></i>Publish Dividend</h5>
+  <form method="POST" action="/admin/dividends/publish">
+    <div class="mb-3">
+      <label for="company_id" class="form-label text-muted">Company</label>
+      <select class="form-select bg-dark text-light border-secondary" id="company_id" name="company_id" required>
+        <option value="">-- Select Company --</option>
+        {% for c in companies %}
+        <option value="{{ c.id }}">{{ c.name }} ({{ c.id[:12] }}...)</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="mb-3">
+      <label for="amount" class="form-label text-muted">Dividend Amount</label>
+      <input type="number" class="form-control bg-dark text-light border-secondary" id="amount" name="amount" required min="1" placeholder="Amount in credits">
+    </div>
+    <div class="mb-3">
+      <label for="source" class="form-label text-muted">Source</label>
+      <select class="form-select bg-dark text-light border-secondary" id="source" name="source">
+        <option value="escrow">Escrow</option>
+        <option value="profit">Profit</option>
+        <option value="manual">Manual</option>
+      </select>
+    </div>
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-send me-1"></i>Publish Dividend</button>
+      <a href="/admin/dividends" class="btn btn-sm btn-outline-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

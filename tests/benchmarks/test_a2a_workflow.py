@@ -5,10 +5,8 @@ Benchmarks the actual A2A provider classes: MemoryProvider, A2ATaskManager, A2AF
 
 import pytest
 
-from agentmesh.a2a_models import ServerTimeoutConfig
 from agentmesh.a2a_provider import (
     A2AFacade,
-    A2AResult,
     A2ATaskManager,
     MemoryProvider,
 )
@@ -23,27 +21,23 @@ class TestA2AProviderBenchmarks:
         provider = MemoryProvider()
 
         def _run():
-            result = provider.create_task(
-                task_id="bench-task",
-                message="Test message",
-                metadata={"bench": "true"},
+            result = provider.send_message(
+                {"id": "bench-task", "message": "Test message", "metadata": {"bench": "true"}},
             )
             return result
 
         result = benchmark(_run)
         assert result.success
+        assert result.task_state == "submitted"
 
     @pytest.mark.benchmark(min_rounds=100)
     def test_send_message(self, benchmark):
-        """Benchmark sending messages to an existing task."""
+        """Benchmark sending messages via MemoryProvider."""
         provider = MemoryProvider()
-        provider.create_task(task_id="bench-task", message="Hello")
+        provider.send_message({"id": "bench-task", "message": "Hello"})
 
         def _run():
-            result = provider.send_message(
-                task_id="bench-task",
-                message="Ping",
-            )
+            result = provider.send_message({"id": "bench-task", "message": "Ping"})
             return result
 
         result = benchmark(_run)
@@ -53,8 +47,7 @@ class TestA2AProviderBenchmarks:
     def test_get_task(self, benchmark):
         """Benchmark getting task state."""
         provider = MemoryProvider()
-        provider.create_task(task_id="bench-task", message="Hello")
-        provider.send_message(task_id="bench-task", message="Ping")
+        provider.send_message({"id": "bench-task", "message": "Hello"})
 
         def _run():
             state = provider.get_task(task_id="bench-task")
@@ -62,18 +55,20 @@ class TestA2AProviderBenchmarks:
 
         state = benchmark(_run)
         assert state is not None
+        assert state.success
 
     @pytest.mark.benchmark(min_rounds=30)
     def test_cancel_task(self, benchmark):
         """Benchmark task cancellation."""
         def _run():
             provider = MemoryProvider()
-            provider.create_task(task_id="cancel-me", message="Hello")
+            provider.send_message({"id": "cancel-me", "message": "Hello"})
             result = provider.cancel_task(task_id="cancel-me")
             return result
 
         result = benchmark(_run)
         assert result.success
+        assert result.task_state == "canceled"
 
 
 class TestA2ATaskManagerBenchmarks:
@@ -82,26 +77,29 @@ class TestA2ATaskManagerBenchmarks:
     @pytest.mark.benchmark(min_rounds=100)
     def test_manager_create_task(self, benchmark):
         """Benchmark task manager create + assign id."""
+        import uuid
         manager = A2ATaskManager()
 
         def _run():
-            task = manager.create_task(message="Bench task")
+            tid = f"bench-{uuid.uuid4().hex[:8]}"
+            task = manager.track(task_id=tid, initial_state="pending", metadata={"desc": "Bench task"})
             return task
 
         task = benchmark(_run)
         assert task is not None
-        assert task.task_id is not None
+        assert task["task_id"] is not None
 
     @pytest.mark.benchmark(min_rounds=50)
     def test_manager_list_tasks(self, benchmark):
         """Benchmark listing tasks from manager."""
         manager = A2ATaskManager()
         for i in range(10):
-            manager.create_task(message=f"Task {i}")
+            manager.track(task_id=f"task-{i}", initial_state="pending", metadata={"desc": f"Task {i}"})
 
         def _run():
-            tasks = manager.list_tasks()
-            return len(tasks)
+            # Use get_task for each known id as a proxy for list operations
+            count = sum(1 for i in range(10) if manager.get_task(f"task-{i}") is not None)
+            return count
 
         count = benchmark(_run)
         assert count == 10
@@ -113,28 +111,23 @@ class TestA2AFacadeBenchmarks:
     @pytest.mark.benchmark(min_rounds=50)
     def test_facade_initialization(self, benchmark):
         """Benchmark A2AFacade creation with MemoryProvider."""
-        config = ServerTimeoutConfig()
-
         def _run():
-            facade = A2AFacade(provider=MemoryProvider(), config=config)
+            facade = A2AFacade(provider=MemoryProvider())
             return facade
 
         facade = benchmark(_run)
         assert facade is not None
 
     @pytest.mark.benchmark(min_rounds=30)
-    def test_facade_send_and_poll(self, benchmark):
-        """Benchmark facade send + poll flow."""
-        config = ServerTimeoutConfig()
-
+    def test_facade_send_task(self, benchmark):
+        """Benchmark facade send task flow."""
+        import uuid
         def _run():
-            facade = A2AFacade(provider=MemoryProvider(), config=config)
-            result = facade.send_message(
-                task_id="test",
-                message="Hello from bench",
-                on_result=lambda r: None,
-            )
+            facade = A2AFacade(provider=MemoryProvider())
+            tid = f"facade-{uuid.uuid4().hex[:8]}"
+            result = facade.send_task({"id": tid, "message": "Hello from bench"})
             return result
 
         result = benchmark(_run)
         assert result is not None
+        assert result.success

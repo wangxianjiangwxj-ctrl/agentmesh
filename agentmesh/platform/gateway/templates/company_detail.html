@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h4>{{ company.name }}</h4>
+  <p style="color:var(--muted);font-size:0.9rem;">
+    ID: <code>{{ company.id }}</code> &middot; Founder: <code>{{ company.founder_id[:16] }}...</code>
+    &middot; Status: <span class="badge-status badge-{{ company.status }}">{{ company.status }}</span>
+    &middot; Created: {{ company.created_at }}
+  </p>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4"><div class="metric"><div class="val">{{ cap_table|length }}</div><div class="lbl">Shareholders</div></div></div>
+  <div class="col-md-4"><div class="metric"><div class="val">{{ total_shares }}</div><div class="lbl">Total Shares</div></div></div>
+  <div class="col-md-4"><div class="metric"><div class="val">{{ member_count }}</div><div class="lbl">Members</div></div></div>
+</div>
+
+<div class="card">
+  <h5>Cap Table</h5>
+  <table>
+    <thead><tr><th>Agent</th><th>Shares</th><th>%</th><th>Classes</th></tr></thead>
+    <tbody>
+      {% for s in cap_table %}
+      <tr>
+        <td style="font-family:monospace;font-size:0.8rem;">{{ s.agent_id[:16] }}...</td>
+        <td><strong>{{ s.total_shares }}</strong></td>
+        <td>{{ "%.1f"|format(s.total_shares / total_shares * 100 if total_shares else 0) }}%</td>
+        <td>{{ s.classes }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" style="text-align:center;color:var(--muted);">No shares issued.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h5>Members</h5>
+  <table>
+    <thead><tr><th>Agent</th><th>Role</th><th>Joined</th></tr></thead>
+    <tbody>
+      {% for m in members %}
+      <tr>
+        <td style="font-family:monospace;font-size:0.8rem;">{{ m.agent_id[:16] }}...</td>
+        <td>{{ m.role }}</td>
+        <td>{{ m.joined_at }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3" style="text-align:center;color:var(--muted);">No members.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h5>Dividend Funds</h5>
+  <table>
+    <thead><tr><th>Fund</th><th>Amount</th><th>Available</th><th>Source</th><th>Distributed</th><th>Created</th></tr></thead>
+    <tbody>
+      {% for f in funds %}
+      <tr>
+        <td style="font-family:monospace;font-size:0.8rem;">{{ f.id[:12] }}...</td>
+        <td>{{ f.total_amount }}</td>
+        <td>{{ f.available_amount }}</td>
+        <td>{{ f.source }}</td>
+        <td>{% if f.distributed %}✅{% else %}⏳{% endif %}</td>
+        <td>{{ f.created_at }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="text-align:center;color:var(--muted);">No dividend funds.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

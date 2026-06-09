@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="max-width:550px;">
+  <h5><i class="bi bi-hand-thumbs-up me-2"></i>Cast Vote</h5>
+  <p class="text-muted mb-3">
+    <strong>{{ proposal.title }}</strong><br>
+    <small>Type: {{ proposal.proposal_type }} | Status: {{ proposal.status }}</small>
+  </p>
+  <div class="mb-3" style="font-size:0.9rem;color:var(--muted);">
+    {{ proposal.description }}
+  </div>
+  <form method="POST" action="/admin/vote/{{ proposal.id }}">
+    <input type="hidden" name="proposal_id" value="{{ proposal.id }}">
+    <div class="mb-3">
+      <label for="voter_id" class="form-label text-muted">Voter ID</label>
+      <input type="text" class="form-control bg-dark text-light border-secondary" id="voter_id" name="voter_id" required placeholder="Your agent UUID">
+    </div>
+    <div class="mb-3">
+      <label class="form-label text-muted">Your Vote</label>
+      <div class="d-flex gap-3">
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="vote" id="vote_approve" value="approve" checked>
+          <label class="form-check-label text-success" for="vote_approve">Approve</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="vote" id="vote_reject" value="reject">
+          <label class="form-check-label text-danger" for="vote_reject">Reject</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="vote" id="vote_abstain" value="abstain">
+          <label class="form-check-label text-muted" for="vote_abstain">Abstain</label>
+        </div>
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check-lg me-1"></i>Submit Vote</button>
+      <a href="/admin/proposals" class="btn btn-sm btn-outline-secondary">Back</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

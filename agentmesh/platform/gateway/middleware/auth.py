@@ -10,6 +10,79 @@ from starlette.responses import JSONResponse
 
 API_KEYS = {"test-key": "test-agent"}  # 开发用 (fallback)
 
+PUBLIC_PATHS = frozenset({"/api/v1/health", "/docs", "/openapi.json"})
+
+
+def _is_public_path(path: str) -> bool:
+    """Check whether a request path is a public (no-auth) endpoint.
+
+    Args:
+        path: The incoming request path.
+
+    Returns:
+        ``True`` if the path is in the public endpoint set.
+    """
+    return path in PUBLIC_PATHS
+
+
+def _resolve_by_api_key(api_key: str) -> str | None:
+    """Resolve an agent ID from an API key using static map + IdentityService.
+
+    Authentication order:
+      1. Static ``API_KEYS`` dict (dev fallback)
+      2. IdentityService ``get_agent_by_auth()`` lookup
+      3. Candidate from static dict used as literal ``get_agent()`` lookup
+
+    Args:
+        api_key: The ``X-API-Key`` header value.
+
+    Returns:
+        An agent ID string if resolved, or ``None`` if not found.
+    """
+    if api_key not in API_KEYS:
+        return _resolve_by_identity_auth(api_key)
+
+    candidate = API_KEYS[api_key]
+
+    # Try identity service first
+    try:
+        from ..deps import get_identity_service
+
+        svc = get_identity_service()
+        agent = svc.get_agent_by_auth(api_key)
+        if agent:
+            return agent["id"]
+        # Try the candidate as agent_id
+        agent = svc.get_agent(candidate)
+        if agent:
+            return agent["id"]
+    except Exception:
+        pass
+
+    # Fallback to static mapping
+    return candidate
+
+
+def _resolve_by_identity_auth(api_key: str) -> str | None:
+    """Resolve an agent ID from an API key using IdentityService only.
+
+    Args:
+        api_key: The ``X-API-Key`` header value.
+
+    Returns:
+        An agent ID string if found, or ``None``.
+    """
+    try:
+        from ..deps import get_identity_service
+
+        svc = get_identity_service()
+        agent = svc.get_agent_by_auth(api_key)
+        if agent:
+            return agent["id"]
+    except Exception:
+        pass
+    return None
+
 
 class AuthMiddleware(BaseHTTPMiddleware):
     """Middleware that validates API keys on incoming requests.
@@ -34,8 +107,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
             A Response — either the original response from the route
             handler on success, or a 401 JSON error on auth failure.
         """
-        if request.url.path in ("/api/v1/health", "/docs", "/openapi.json"):
+        if _is_public_path(request.url.path):
             return await call_next(request)
+
         api_key = request.headers.get("X-API-Key")
         if not api_key:
             return JSONResponse(
@@ -43,40 +117,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 content={"error": "missing API key"},
             )
 
-        # Check static dict first
-        if api_key in API_KEYS:
-            candidate = API_KEYS[api_key]
-            # Try to find a registered agent by auth_token or candidate ID
-            try:
-                from ..deps import get_identity_service
-
-                svc = get_identity_service()
-                agent = svc.get_agent_by_auth(api_key)
-                if agent:
-                    request.state.agent_id = agent["id"]
-                    return await call_next(request)
-                # Try the candidate as agent_id
-                agent = svc.get_agent(candidate)
-                if agent:
-                    request.state.agent_id = agent["id"]
-                    return await call_next(request)
-            except Exception:
-                pass
-            # Fallback to static mapping
-            request.state.agent_id = candidate
+        agent_id = _resolve_by_api_key(api_key)
+        if agent_id is not None:
+            request.state.agent_id = agent_id
             return await call_next(request)
-
-        # Try IdentityService auth_token lookup for unknown keys
-        try:
-            from ..deps import get_identity_service
-
-            svc = get_identity_service()
-            agent = svc.get_agent_by_auth(api_key)
-            if agent:
-                request.state.agent_id = agent["id"]
-                return await call_next(request)
-        except Exception:
-            pass
 
         return JSONResponse(
             status_code=401,

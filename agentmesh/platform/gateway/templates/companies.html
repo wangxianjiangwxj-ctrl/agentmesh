@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-md-3"><div class="metric"><div class="val">{{ companies|length }}</div><div class="lbl">Total Companies</div></div></div>
+  <div class="col-md-3"><div class="metric"><div class="val">{{ active_count }}</div><div class="lbl">Active</div></div></div>
+  <div class="col-md-3"><div class="metric"><div class="val">{{ total_members }}</div><div class="lbl">Total Members</div></div></div>
+  <div class="col-md-3"><div class="metric"><div class="val">{{ total_shares }}</div><div class="lbl">Total Shares</div></div></div>
+</div>
+<div class="text-end mb-3"><a href="/admin/companies/create" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg me-1"></i>Create Company</a></div>
+<div class="card">
+  <table>
+    <thead><tr><th>Name</th><th>Founder</th><th>Members</th><th>Status</th><th>Created</th><th></th></tr></thead>
+    <tbody>
+      {% for c in companies %}
+      <tr>
+        <td><strong>{{ c.name }}</strong></td>
+        <td style="font-family:monospace;font-size:0.8rem;">{{ c.founder_id[:16] }}...</td>
+        <td>{{ c.member_count }}</td>
+        <td><span class="badge-status badge-{{ c.status }}">{{ c.status }}</span></td>
+        <td>{{ c.created_at }}</td>
+        <td><a href="/admin/companies/{{ c.id }}" class="btn btn-sm btn-outline-primary">Details</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="text-align:center;color:var(--muted);">No companies registered yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="max-width:600px;">
+  <h5><i class="bi bi-building-add me-2"></i>Create Company</h5>
+  <form method="POST" action="/admin/companies/create">
+    <div class="mb-3">
+      <label for="name" class="form-label text-muted">Company Name</label>
+      <input type="text" class="form-control bg-dark text-light border-secondary" id="name" name="name" required placeholder="e.g. AgentMesh Inc.">
+    </div>
+    <div class="mb-3">
+      <label for="founder_id" class="form-label text-muted">Founder ID</label>
+      <input type="text" class="form-control bg-dark text-light border-secondary" id="founder_id" name="founder_id" required placeholder="Agent UUID">
+      <div class="form-text text-muted">The agent ID of the founder. If not registered, a new agent will be created.</div>
+    </div>
+    <div class="row mb-3">
+      <div class="col-md-6">
+        <label for="initial_shares" class="form-label text-muted">Initial Shares</label>
+        <input type="number" class="form-control bg-dark text-light border-secondary" id="initial_shares" name="initial_shares" value="1000" min="1">
+      </div>
+      <div class="col-md-6">
+        <label for="initial_class" class="form-label text-muted">Share Class</label>
+        <select class="form-select bg-dark text-light border-secondary" id="initial_class" name="initial_class">
+          <option value="founder">Founder</option>
+          <option value="common">Common</option>
+          <option value="preferred">Preferred</option>
+        </select>
+      </div>
+    </div>
+    <div class="mb-3">
+      <label for="description" class="form-label text-muted">Description</label>
+      <textarea class="form-control bg-dark text-light border-secondary" id="description" name="description" rows="3" placeholder="Optional company description"></textarea>
+    </div>
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check-lg me-1"></i>Create Company</button>
+      <a href="/admin/companies" class="btn btn-sm btn-outline-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

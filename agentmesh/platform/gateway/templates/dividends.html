@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-md-3"><div class="metric"><div class="val">{{ funds|length }}</div><div class="lbl">Funds</div></div></div>
+  <div class="col-md-3"><div class="metric"><div class="val">{{ total_deposited }}</div><div class="lbl">Total Deposited</div></div></div>
+  <div class="col-md-3"><div class="metric"><div class="val">{{ total_distributed }}</div><div class="lbl">Distributed</div></div></div>
+  <div class="col-md-3"><div class="metric"><div class="val">{{ records|length }}</div><div class="lbl">Payments</div></div></div>
+</div>
+
+<div class="text-end mb-3"><a href="/admin/dividends/publish" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg me-1"></i>Publish Dividend</a></div>
+
+<div class="card">
+  <h5>Dividend Funds</h5>
+  <table>
+    <thead><tr><th>Fund ID</th><th>Company</th><th>Amount</th><th>Source</th><th>Distributed</th><th>Created</th></tr></thead>
+    <tbody>
+      {% for f in funds %}
+      <tr>
+        <td><code>{{ f.id[:12] }}...</code></td>
+        <td><code>{{ f.company_id[:12] }}...</code></td>
+        <td>{{ f.total_amount }}</td>
+        <td>{{ f.source }}</td>
+        <td>{% if f.distributed %}✅{% else %}⏳{% endif %}</td>
+        <td>{{ f.created_at }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="text-align:center;color:var(--muted);">No funds.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h5>Recent Payments</h5>
+  <table>
+    <thead><tr><th>Agent</th><th>Amount</th><th>Company</th><th>Claimed</th><th>Date</th></tr></thead>
+    <tbody>
+      {% for r in records %}
+      <tr>
+        <td><code>{{ r.agent_id[:12] }}...</code></td>
+        <td><strong>{{ r.dividend_amount }}</strong></td>
+        <td><code>{{ r.company_id[:12] }}...</code></td>
+        <td>{% if r.claimed %}✅{% else %}⏳{% endif %}</td>
+        <td>{{ r.created_at }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" style="text-align:center;color:var(--muted);">No dividend payments.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

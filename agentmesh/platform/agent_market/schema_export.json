@@ -1,0 +1,108 @@
+{
+  "meta": {
+    "module": "agent_market",
+    "phase": "35B",
+    "module_name": "Agent Market (Agent Hiring Module)",
+    "schema_version": "1.0.0",
+    "description": "Schema export for the Agent Market module. This file documents table structures for future SQL migration."
+  },
+  "relationship_with_db_schema": {
+    "note": "The existing db_schema.py (agentmesh/platform/db_schema.py) contains tables for identity, tasks, escrow, audit, and reputation (MVP Modules 1-5) plus company and dividend tables (Phase 34). The Agent Market (Phase 35B) is new and not yet included in db_schema.py. A future migration should add the following tables.",
+    "migration_plan": {
+      "sqlite_compatibility": true,
+      "foreign_keys": "Application-level only (no DB-level FK constraints, consistent with existing db_schema.py pattern)",
+      "recommended_action": "Append the following CREATE TABLE statements to the SCHEMA_SQL string in db_schema.py",
+      "example_migration_sql": [
+        "-- ====================================================================",
+        "-- Module 7: Agent Market (Phase 35B)",
+        "-- ====================================================================",
+        "",
+        "CREATE TABLE IF NOT EXISTS skill_registry (",
+        "    skill_name      TEXT PRIMARY KEY,",
+        "    category        TEXT NOT NULL DEFAULT 'general',",
+        "    description     TEXT NOT NULL DEFAULT ''",
+        ");",
+        "CREATE INDEX IF NOT EXISTS idx_skills_category ON skill_registry(category);",
+        "",
+        "CREATE TABLE IF NOT EXISTS job_postings (",
+        "    id              TEXT PRIMARY KEY,",
+        "    company_id      TEXT NOT NULL,",
+        "    title           TEXT NOT NULL,",
+        "    description     TEXT NOT NULL DEFAULT '',",
+        "    required_skills TEXT NOT NULL DEFAULT '[]',",
+        "    reward_escrow   INTEGER NOT NULL DEFAULT 0,",
+        "    max_applicants  INTEGER NOT NULL DEFAULT 0,",
+        "    deadline        TEXT NOT NULL DEFAULT '',",
+        "    status          TEXT NOT NULL DEFAULT 'open'",
+        "                    CHECK(status IN ('open','closed','cancelled','completed')),",
+        "    created_at      TEXT NOT NULL DEFAULT (datetime('now'))",
+        ");",
+        "CREATE INDEX IF NOT EXISTS idx_jobs_company ON job_postings(company_id);",
+        "CREATE INDEX IF NOT EXISTS idx_jobs_status ON job_postings(status);",
+        "",
+        "CREATE TABLE IF NOT EXISTS applications (",
+        "    id              TEXT PRIMARY KEY,",
+        "    job_id          TEXT NOT NULL,",
+        "    agent_id        TEXT NOT NULL,",
+        "    cover_letter    TEXT NOT NULL DEFAULT '',",
+        "    status          TEXT NOT NULL DEFAULT 'pending'",
+        "                    CHECK(status IN ('pending','shortlisted','accepted','rejected')),",
+        "    assigned_at     TEXT NOT NULL DEFAULT '',",
+        "    created_at      TEXT NOT NULL DEFAULT (datetime('now'))",
+        ");",
+        "CREATE INDEX IF NOT EXISTS idx_apps_job ON applications(job_id);",
+        "CREATE INDEX IF NOT EXISTS idx_apps_agent ON applications(agent_id);",
+        "CREATE INDEX IF NOT EXISTS idx_apps_status ON applications(status);"
+      ]
+    }
+  },
+  "tables": {
+    "skill_registry": {
+      "description": "Registry of available skills that can be required by job postings. Skills are identified by their unique name and can be grouped by category.",
+      "columns": [
+        {"name": "skill_name", "type": "TEXT", "nullable": false, "primary_key": true, "description": "Unique skill name"},
+        {"name": "category", "type": "TEXT", "nullable": false, "default": "'general'", "description": "Skill category (e.g. programming, design, writing)"},
+        {"name": "description", "type": "TEXT", "nullable": false, "default": "''", "description": "Optional description of the skill"}
+      ],
+      "indexes": [
+        {"name": "idx_skills_category", "columns": ["category"]}
+      ]
+    },
+    "job_postings": {
+      "description": "Job postings published by companies in the Agent Market. Each posting has a title, description, required skills, reward escrow amount, and lifecycle status.",
+      "columns": [
+        {"name": "id", "type": "TEXT", "nullable": false, "primary_key": true, "description": "UUID hex unique identifier"},
+        {"name": "company_id", "type": "TEXT", "nullable": false, "description": "Company posting the job (references companies.id)"},
+        {"name": "title", "type": "TEXT", "nullable": false, "description": "Job title (non-empty)"},
+        {"name": "description", "type": "TEXT", "nullable": false, "default": "''", "description": "Detailed job description"},
+        {"name": "required_skills", "type": "TEXT", "nullable": false, "default": "'[]'", "description": "JSON array of required skill names"},
+        {"name": "reward_escrow", "type": "INTEGER", "nullable": false, "default": "0", "description": "Escrow reward amount (points) for completing the job"},
+        {"name": "max_applicants", "type": "INTEGER", "nullable": false, "default": "0", "description": "Maximum number of applicants (0 = unlimited)"},
+        {"name": "deadline", "type": "TEXT", "nullable": false, "default": "''", "description": "ISO-8601 deadline string"},
+        {"name": "status", "type": "TEXT", "nullable": false, "default": "'open'", "description": "Life-cycle status: open, closed, cancelled, or completed"},
+        {"name": "created_at", "type": "TEXT", "nullable": false, "default": "datetime('now')", "description": "ISO-8601 creation timestamp"}
+      ],
+      "indexes": [
+        {"name": "idx_jobs_company", "columns": ["company_id"]},
+        {"name": "idx_jobs_status", "columns": ["status"]}
+      ]
+    },
+    "applications": {
+      "description": "Agent applications submitted in response to job postings. Each application has a status lifecycle from pending through shortlisted to accepted or rejected.",
+      "columns": [
+        {"name": "id", "type": "TEXT", "nullable": false, "primary_key": true, "description": "UUID hex unique identifier"},
+        {"name": "job_id", "type": "TEXT", "nullable": false, "description": "References job_postings.id"},
+        {"name": "agent_id", "type": "TEXT", "nullable": false, "description": "Agent submitting the application (references agents.id)"},
+        {"name": "cover_letter", "type": "TEXT", "nullable": false, "default": "''", "description": "Optional cover letter or pitch from the agent"},
+        {"name": "status", "type": "TEXT", "nullable": false, "default": "'pending'", "description": "Application status: pending, shortlisted, accepted, or rejected"},
+        {"name": "assigned_at", "type": "TEXT", "nullable": false, "default": "''", "description": "ISO-8601 timestamp when the agent was assigned (accepted)"},
+        {"name": "created_at", "type": "TEXT", "nullable": false, "default": "datetime('now')", "description": "ISO-8601 creation timestamp"}
+      ],
+      "indexes": [
+        {"name": "idx_apps_job", "columns": ["job_id"]},
+        {"name": "idx_apps_agent", "columns": ["agent_id"]},
+        {"name": "idx_apps_status", "columns": ["status"]}
+      ]
+    }
+  }
+}
